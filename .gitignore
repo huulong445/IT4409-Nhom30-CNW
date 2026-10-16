@@ -1,0 +1,16 @@
+# Node modules (Thư viện nặng của Backend và Frontend)
+**/node_modules/
+
+# Môi trường và bảo mật
+.env
+**/server/.env
+**/client/.env
+
+# Build outputs (Thư mục sau khi build ra để chạy production)
+dist/
+build/
+.output/
+
+# Các file hệ thống ẩn
+.DS_Store
+Thumbs.db
