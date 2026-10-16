@@ -3,8 +3,8 @@
 
 # Môi trường và bảo mật
 .env
-**/server/.env
-**/client/.env
+**/backend/.env
+**/frontend/.env
 
 # Build outputs (Thư mục sau khi build ra để chạy production)
 dist/
