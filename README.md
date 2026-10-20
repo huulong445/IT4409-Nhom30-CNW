@@ -147,3 +147,14 @@ USE hospital_db;
 SOURCE schema.sql;
 SOURCE data.sql;
 ```
+
+3. Tạo file `.env` tại root
+
+```
+PORT=5000
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=ur_mysql_pass_here
+DB_NAME=hospital_db
+```

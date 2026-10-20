@@ -4,19 +4,21 @@ require("dotenv").config();
 
 const app = express();
 
-// Middlewares cơ bản
+// Middlewares
 app.use(cors());
-app.use(express.json()); // Đọc dữ liệu JSON từ request body
+app.use(express.json());
 
-// API Test đơn giản
+// Import Routes
+const userRoutes = require("./routes/user.routes");
+
+// Mount Routes
+app.use("/api/v1/users", userRoutes);
+
 app.get("/api/v1/health", (req, res) => {
-  res.status(200).json({
-    status: "success",
-    message: "Hospital API Server is running properly!",
-  });
+  res.status(200).json({ status: "OK", message: "Server đang chạy tốt!" });
 });
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`Server is running on port: http://localhost:${PORT}`);
+  console.log(`Server đang chạy tại http://localhost:${PORT}`);
 });
