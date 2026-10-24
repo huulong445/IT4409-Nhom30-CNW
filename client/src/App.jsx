@@ -3,6 +3,15 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import DashboardLayout from './layouts/DashboardLayout';
 
+import PatientRegister from './pages/auth/PatientRegister';
+import PatientBooking from './pages/patient/PatientBooking';
+import AuthLayout from './layouts/AuthLayout';
+import PatientLogin from './pages/auth/PatientLogin';
+
+// Patient pages
+import PatientLayout from './layouts/PatientLayout';
+import PatientHome from './pages/patient/PatientHome';
+
 // Doctor pages
 import DoctorQueue from './pages/doctor/DoctorQueue';
 import ExaminationRoom from './pages/doctor/ExaminationRoom';
@@ -57,6 +66,20 @@ function App() {
             <Route path="reports" element={<AdminReports />} />
           </Route>
 
+          {/* Giao diện bệnh nhân */}
+          <Route path="/patient" element={<PatientLayout />}>
+            <Route index element={<PatientHome />} />
+            <Route path="booking" element={<PatientBooking />} />
+          </Route>
+
+          {/* Giao diện xác thực */}
+          <Route path="/patient/login" element={<AuthLayout />}>
+            <Route index element={<PatientLogin />} />
+          </Route>
+
+          <Route path="/patient/register" element={<AuthLayout />}>
+            <Route index element={<PatientRegister />} />
+          </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
