@@ -1,22 +1,19 @@
-
 const express = require("express");
+const controller = require(
+  "../../controllers/admin_controller/AdminUser.controller"
+);
+const { authenticate } = require("../../middlewares/auth.middleware");
+const { requireRole } = require("../../middlewares/rbac.middleware");
+const { ROLES } = require("../../config/roles");
+
 const router = express.Router();
 
-const adminUserController = require("../../controllers/admin_controller/AdminUser.controller");
+router.use(authenticate, requireRole(ROLES.ADMIN));
 
-// Lấy danh sách tài khoản
-router.get("/users", adminUserController.getAllUsers);
-
-// Lấy chi tiết tài khoản theo ID
-router.get("/users/:id", adminUserController.getUserById);
-
-// Tạo tài khoản mới
-router.post("/users", adminUserController.createUser);
-
-// Cập nhật thông tin tài khoản
-router.put("/users/:id", adminUserController.updateUser);
-
-// Khóa hoặc mở khóa tài khoản
-router.patch("/users/:id/status", adminUserController.updateUserStatus);
+router.get("/users", controller.getAllUsers);
+router.get("/users/:id", controller.getUserById);
+router.post("/users", controller.createUser);
+router.put("/users/:id", controller.updateUser);
+router.patch("/users/:id/status", controller.updateUserStatus);
 
 module.exports = router;

@@ -15,11 +15,14 @@ const pool = mysql.createPool({
 
 const testDBCon = async () => {
   try {
-    const conn = pool.getConnection();
+    const conn = await pool.getConnection();
     console.log("Kết nối DB thành công");
-    (await conn).release();
+    conn.release();
   } catch (error) {
-    console.error("Kết nối DB thất bại: ", error.message);
+    console.error("Kết nối DB thất bại:", {
+      code: error.code,
+      message: error.message,
+    });
   }
 };
 

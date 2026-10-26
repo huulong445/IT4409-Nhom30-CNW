@@ -1,8 +1,16 @@
 const express = require("express");
-const router = express.Router();
 const userController = require("../controllers/user.controller");
+const { authenticate } = require("../middlewares/auth.middleware");
+const { requireRole } = require("../middlewares/rbac.middleware");
+const { ROLES } = require("../config/roles");
 
-// GET /api/v1/users
-router.get("/", userController.getAllUsers);
+const router = express.Router();
+
+router.get(
+  "/",
+  authenticate,
+  requireRole(ROLES.ADMIN),
+  userController.getAllUsers
+);
 
 module.exports = router;

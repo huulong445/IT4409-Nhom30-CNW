@@ -1,14 +1,14 @@
 
 const bcrypt = require("bcryptjs");
 const userModel = require("../../models/admin_model/AdminUser.model");
-
-const ALLOWED_ROLES = [
-  "PATIENT",
-  "DOCTOR",
-  "RECEPTIONIST",
-  "LAB_TECH",
-  "ADMIN"
-];
+const { ALLOWED_ROLES } = require("../../config/roles");
+//const ALLOWED_ROLES = [
+  //"PATIENT",
+  //"DOCTOR",
+ // "RECEPTIONIST",
+  //"LAB_TECH",
+  //"ADMIN"
+//];
 
 const isValidId = (id) =>
   /^\d+$/.test(String(id)) && Number(id) > 0;
@@ -193,6 +193,16 @@ const updateUser = async (req, res) => {
         message: "Role không hợp lệ"
       });
     }
+    if (
+       Number(id) === req.user.user_id &&
+       data.role !== undefined &&
+       data.role !== req.user.role
+      ) {
+       return res.status(400).json({
+       success: false,
+       message: "Bạn không được tự thay đổi vai trò của mình",
+      });
+    }
 
     if (req.body.password !== undefined) {
       const { password } = req.body;
@@ -224,17 +234,18 @@ const updateUser = async (req, res) => {
       data.phone !== undefined
     ) {
       const existing = await userModel.findExistingUser({
-        username: data.username ?? currentUser.username,
-        email: data.email ?? currentUser.email,
-        phone: data.phone ?? currentUser.phone
+         username: data.username ?? currentUser.username,
+         email: data.email ?? currentUser.email,
+         phone: data.phone ?? currentUser.phone,
+         excludeUserId: Number(id),
       });
 
-      if (existing && existing.user_id !== Number(id)) {
-        return res.status(409).json({
+      if (existing) {
+          return res.status(409).json({
           success: false,
-          message: "Username, email hoặc phone đã tồn tại"
-        });
-      }
+          message: "Username, email hoặc phone đã tồn tại",
+      });
+     }
     }
 
     const user = await userModel.updateUser(Number(id), data);
@@ -278,6 +289,12 @@ const updateUserStatus = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "is_active phải là true hoặc false"
+      });
+    }
+    if (Number(id) === req.user.user_id && is_active === false) {
+      return res.status(400).json({
+        success: false,
+        message: "Bạn không được tự khóa tài khoản của mình",
       });
     }
 

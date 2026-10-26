@@ -27,13 +27,19 @@ const getUserById = async (id) => {
 };
 
 // 3. Kiểm tra username, email hoặc phone đã tồn tại
-const findExistingUser = async ({ username, email, phone }) => {
+const findExistingUser = async ({
+  username,
+  email,
+  phone,
+  excludeUserId = null,
+}) => {
   const [rows] = await db.query(
     `SELECT user_id, username, email, phone
      FROM users
-     WHERE username = ? OR email = ? OR phone = ?
+     WHERE (username = ? OR email = ? OR phone = ?)
+       AND (? IS NULL OR user_id <> ?)
      LIMIT 1`,
-    [username, email, phone]
+    [username, email, phone, excludeUserId, excludeUserId]
   );
 
   return rows[0] || null;
