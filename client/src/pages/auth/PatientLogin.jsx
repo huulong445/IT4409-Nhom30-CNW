@@ -1,19 +1,25 @@
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import {
-  UserRound, LockKeyhole, Eye, EyeOff,
-  ArrowRight, AlertCircle
-} from 'lucide-react';
+  UserRound,
+  LockKeyhole,
+  Eye,
+  EyeOff,
+  ArrowRight,
+  AlertCircle,
+} from "lucide-react";
 
 export default function PatientLogin() {
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
-    identifier: '',
-    password: '',
+    username: "",
+    password: "",
   });
 
   const [showPassword, setShowPassword] = useState(false);
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState("");
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -24,17 +30,33 @@ export default function PatientLogin() {
     }));
   };
 
-  const handleSubmit = (event) => {
-    event.preventDefault();
-
-    if (!form.identifier.trim() || !form.password) {
-      setMessage('Vui lòng nhập đầy đủ thông tin.');
-      return;
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setMessage("");
+    setLoading(true);
+    try {
+      const response = await fetch("http://localhost:5000/api/v1/users/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(form),
+      });
+      const result = await response.json();
+      if (result.success) {
+        alert("Đăng nhập thành công");
+        localStorage.setItem("token", result.data.token);
+        localStorage.setItem("user", JSON.stringify(result.data.user));
+        navigate("/patient");
+      } else {
+        setMessage(result.message || "Tài khoản hoặc mật khẩu không chính xác");
+      }
+    } catch (error) {
+      console.error("Lỗi kết nối API:", error);
+      setMessage("Không thể kết nối đến máy chủ");
+    } finally {
+      setLoading(false);
     }
-
-    setMessage(
-      'Giao diện đã sẵn sàng. Chức năng đăng nhập sẽ hoạt động sau khi kết nối API xác thực.'
-    );
   };
 
   return (
@@ -44,9 +66,7 @@ export default function PatientLogin() {
           <UserRound size={28} />
         </div>
 
-        <h2 className="text-2xl font-bold text-slate-900">
-          Đăng nhập
-        </h2>
+        <h2 className="text-2xl font-bold text-slate-900">Đăng nhập</h2>
 
         <p className="text-sm text-slate-500 mt-2">
           Truy cập hồ sơ sức khỏe và quản lý lịch khám của bạn
@@ -79,10 +99,10 @@ export default function PatientLogin() {
             />
             <input
               id="patient-identifier"
-              name="identifier"
+              name="username"
               type="text"
               autoComplete="username"
-              value={form.identifier}
+              value={form.username}
               onChange={handleChange}
               placeholder="Nhập số điện thoại hoặc email"
               className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-blue-200 focus:border-[#004282] text-sm"
@@ -107,7 +127,7 @@ export default function PatientLogin() {
             <input
               id="patient-password"
               name="password"
-              type={showPassword ? 'text' : 'password'}
+              type={showPassword ? "text" : "password"}
               autoComplete="current-password"
               value={form.password}
               onChange={handleChange}
@@ -118,12 +138,10 @@ export default function PatientLogin() {
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+              aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
               className="absolute right-3 top-3.5 text-slate-400 hover:text-blue-700"
             >
-              {showPassword
-                ? <EyeOff size={18} />
-                : <Eye size={18} />}
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
         </div>
@@ -138,12 +156,12 @@ export default function PatientLogin() {
       </form>
 
       <p className="mt-7 text-center text-sm text-slate-600">
-        Chưa có tài khoản?{' '}
+        Chưa có tài khoản?{" "}
         <Link
-            to="/patient/register"
-            className="text-[#005baa] font-semibold hover:underline"
+          to="/patient/register"
+          className="text-[#005baa] font-semibold hover:underline"
         >
-            Đăng ký ngay
+          Đăng ký ngay
         </Link>
       </p>
 

@@ -148,6 +148,12 @@ SOURCE schema.sql;
 SOURCE data.sql;
 ```
 
+2.5 Tạo JWT Secret Key
+
+```
+node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+```
+
 3. Tạo file `.env` tại root
 
 ```
@@ -157,4 +163,5 @@ DB_PORT=3306
 DB_USER=root
 DB_PASSWORD=ur_mysql_pass_here
 DB_NAME=hospital_db
+JWT_SECRET=jwt_secret_key_here
 ```
