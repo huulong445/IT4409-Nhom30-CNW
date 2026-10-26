@@ -115,10 +115,10 @@ client/
 └── vite.config.js
 ```
 
-## NodeJS
+## BE
 
 ```
-cd root/
+cd root/server
 npm install
 
 # Chạy SV
@@ -164,4 +164,12 @@ DB_USER=root
 DB_PASSWORD=ur_mysql_pass_here
 DB_NAME=hospital_db
 JWT_SECRET=jwt_secret_key_here
+```
+
+## FE
+
+```
+cd root/client
+npm install
+npm run dev
 ```
