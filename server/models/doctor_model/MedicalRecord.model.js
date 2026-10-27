@@ -1,4 +1,4 @@
-const db = require("../config/db.config");
+const db = require('../../config/db.config.js');
 
 const MedicalRecordModel = {
     create: async ({ appointment_id, patient_id, doctor_id, symptoms, diagnosis_icd10, notes }) => {
@@ -35,5 +35,4 @@ const MedicalRecordModel = {
         return result;
     }
 };
-
-export default MedicalRecordModel;
+module.exports = MedicalRecordModel;

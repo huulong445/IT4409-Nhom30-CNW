@@ -10,9 +10,11 @@ app.use(express.json());
 
 // Import Routes
 const userRoutes = require("./routes/user.routes");
+const doctorRoutes = require("./routes/doctor.routes");
 
 // Mount Routes
 app.use("/api/v1/users", userRoutes);
+app.use("/api/v1/doctor", doctorRoutes);
 
 app.get("/api/v1/health", (req, res) => {
   res.status(200).json({ status: "OK", message: "Server đang chạy tốt!" });

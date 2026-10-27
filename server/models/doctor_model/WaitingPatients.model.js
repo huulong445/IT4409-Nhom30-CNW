@@ -1,8 +1,8 @@
-const db = require("../config/db.config");
+const db = require('../../config/db.config.js');
 
 // Các hàm cũ (nếu có)...
 
-export const getWaitingPatientsByDoctorAndDate = async (doctor_id, date) => {
+const getWaitingPatientsByDoctorAndDate = async (doctor_id, date) => {
     const query = `
         SELECT a.appointment_id, a.queue_number, a.time_slot, a.status, 
                p.patient_id, p.full_name, p.dob, p.gender, p.insurance_number
@@ -13,4 +13,9 @@ export const getWaitingPatientsByDoctorAndDate = async (doctor_id, date) => {
     `;
     const [rows] = await db.query(query, [doctor_id, date]);
     return rows;
+};
+
+
+module.exports = {
+    getWaitingPatientsByDoctorAndDate
 };

@@ -1,4 +1,4 @@
-const db = require('../config/db'); // Đường dẫn đến file cấu hình database của bạn
+const db = require('../../config/db.config.js'); // Đường dẫn đến file cấu hình database của bạn
 
 const LabRequestModel = {
     create: async ({ record_id, patient_id, doctor_id, test_type }) => {
@@ -40,4 +40,4 @@ const LabRequestModel = {
     }
 };
 
-export default LabRequestModel; // Hoặc dùng module.exports nếu dự án dùng CommonJS
+module.exports = LabRequestModel; // Hoặc dùng module.exports nếu dự án dùng CommonJS

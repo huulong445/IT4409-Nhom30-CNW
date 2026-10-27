@@ -1,7 +1,7 @@
-import MedicalRecordModel from '../models/medicalRecordModel.js';
+const MedicalRecordModel = require('../../models/doctor_model/MedicalRecord.model.js');
 
 // POST /api/medical-records
-export const CreateMedicalRecord = async (req, res) => {
+exports.CreateMedicalRecord = async (req, res) => {
     try {
         const { appointment_id, patient_id, doctor_id, symptoms, diagnosis_icd10, notes } = req.body;
 
@@ -25,7 +25,7 @@ export const CreateMedicalRecord = async (req, res) => {
 };
 
 // GET /api/medical-records/:record_id
-export const GetMedicalRecordById = async (req, res) => {
+exports.GetMedicalRecordById = async (req, res) => {
     try {
         const { record_id } = req.params;
         const record = await MedicalRecordModel.getById(record_id);
@@ -40,11 +40,10 @@ export const GetMedicalRecordById = async (req, res) => {
     }
 };
 
-// GET /api/medical-records/patient/:patient_id (hoặc dùng query ?patient_id=...)
-// Chính là lấy lịch sử khám bệnh
-export const GetMedicalRecordsByPatient = async (req, res) => {
+// GET /api/medical-records/patient/:patient_id
+exports.GetMedicalRecordsByPatient = async (req, res) => {
     try {
-        const { patient_id } = req.params; // Hoặc req.query.patient_id tùy thiết kế route của bạn
+        const { patient_id } = req.params;
         const records = await MedicalRecordModel.getByPatientId(patient_id);
 
         return res.status(200).json({ 
@@ -58,7 +57,7 @@ export const GetMedicalRecordsByPatient = async (req, res) => {
 };
 
 // PUT /api/medical-records/:record_id
-export const UpdateMedicalRecord = async (req, res) => {
+exports.UpdateMedicalRecord = async (req, res) => {
     try {
         const { record_id } = req.params;
         const { symptoms, diagnosis_icd10, notes } = req.body;
@@ -76,7 +75,7 @@ export const UpdateMedicalRecord = async (req, res) => {
 };
 
 // DELETE /api/medical-records/:record_id
-export const DeleteMedicalRecord = async (req, res) => {
+exports.DeleteMedicalRecord = async (req, res) => {
     try {
         const { record_id } = req.params;
         const result = await MedicalRecordModel.remove(record_id);

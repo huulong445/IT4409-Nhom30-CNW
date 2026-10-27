@@ -1,7 +1,7 @@
-import LabRequestModel from '../models/labRequestModel.js';
+const LabRequestModel = require('../../models/doctor_model/LabRequest.model.js');
 
 // POST /api/lab-requests
-export const CreateLabRequest = async (req, res) => {
+exports.CreateLabRequest = async (req, res) => {
     try {
         const { record_id, patient_id, doctor_id, test_type } = req.body;
         const result = await LabRequestModel.create({ record_id, patient_id, doctor_id, test_type });
@@ -17,7 +17,7 @@ export const CreateLabRequest = async (req, res) => {
 };
 
 // GET /api/lab-requests?record_id=... hoặc ?patient_id=...
-export const GetLabRequests = async (req, res) => {
+exports.GetLabRequests = async (req, res) => {
     try {
         const { record_id, patient_id } = req.query;
         
@@ -33,7 +33,7 @@ export const GetLabRequests = async (req, res) => {
 };
 
 // PUT /api/lab-requests/:lab_request_id
-export const UpdateLabRequest = async (req, res) => {
+exports.UpdateLabRequest = async (req, res) => {
     try {
         const { lab_request_id } = req.params;
         const { test_type, status } = req.body;
@@ -51,7 +51,7 @@ export const UpdateLabRequest = async (req, res) => {
 };
 
 // DELETE /api/lab-requests/:lab_request_id
-export const DeleteLabRequest = async (req, res) => {
+exports.DeleteLabRequest = async (req, res) => {
     try {
         const { lab_request_id } = req.params;
         const result = await LabRequestModel.remove(lab_request_id);

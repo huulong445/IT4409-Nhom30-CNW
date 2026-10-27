@@ -1,6 +1,6 @@
-import { getWaitingPatientsByDoctorAndDate } from "../../models/doctor_model/WaitingPatients.model";
-// GET /api/doctor/appointments?doctor_id=1&date=2026-06-06
-export const GetWaitingPatients = async (req, res) => {
+const { getWaitingPatientsByDoctorAndDate } = require("../../models/doctor_model/WaitingPatients.model.js");
+
+exports.GetWaitingPatients = async (req, res) => {
     try {
         const { doctor_id, date } = req.query;
         

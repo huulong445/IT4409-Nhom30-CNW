@@ -1,7 +1,7 @@
-import PrescriptionModel from '../models/prescriptionModel.js';
+const PrescriptionModel = require('../../models/doctor_model/Prescription.model.js');
 
 // POST /api/prescriptions
-export const CreatePrescription = async (req, res) => {
+exports.CreatePrescription = async (req, res) => {
     try {
         const { record_id, doctor_id, medication_details } = req.body;
 
@@ -22,7 +22,7 @@ export const CreatePrescription = async (req, res) => {
 };
 
 // GET /api/prescriptions/:record_id
-export const GetPrescriptionByRecord = async (req, res) => {
+exports.GetPrescriptionByRecord = async (req, res) => {
     try {
         const { record_id } = req.params;
         const prescription = await PrescriptionModel.getByRecordId(record_id);
@@ -38,7 +38,7 @@ export const GetPrescriptionByRecord = async (req, res) => {
 };
 
 // PUT /api/prescriptions/:prescription_id
-export const UpdatePrescription = async (req, res) => {
+exports.UpdatePrescription = async (req, res) => {
     try {
         const { prescription_id } = req.params;
         const { medication_details } = req.body;
@@ -56,7 +56,7 @@ export const UpdatePrescription = async (req, res) => {
 };
 
 // DELETE /api/prescriptions/:prescription_id
-export const DeletePrescription = async (req, res) => {
+exports.DeletePrescription = async (req, res) => {
     try {
         const { prescription_id } = req.params;
         const result = await PrescriptionModel.remove(prescription_id);
