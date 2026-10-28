@@ -329,10 +329,64 @@ const updateUserStatus = async (req, res) => {
   }
 };
 
+// DELETE: Xóa tài khoản
+const deleteUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!isValidId(id) || !Number.isSafeInteger(Number(id))) {
+      return res.status(400).json({
+        success: false,
+        message: "ID tài khoản không hợp lệ"
+      });
+    }
+
+    const userId = Number(id);
+
+    // Ngăn admin tự xóa tài khoản đang đăng nhập
+    if (userId === Number(req.user.user_id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Bạn không được tự xóa tài khoản của mình"
+      });
+    }
+
+    const deleted = await userModel.deleteUser(userId);
+
+    if (!deleted) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy tài khoản"
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Xóa tài khoản thành công"
+    });
+  } catch (error) {
+    console.error("deleteUser:", error.message);
+
+    if (error.code === "ER_ROW_IS_REFERENCED_2") {
+      return res.status(409).json({
+        success: false,
+        message:
+          "Tài khoản có dữ liệu liên quan nên không thể xóa. Bạn có thể khóa tài khoản."
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: "Lỗi server khi xóa tài khoản"
+    });
+  }
+};
+
 module.exports = {
   getAllUsers,
   getUserById,
   createUser,
   updateUser,
-  updateUserStatus
+  updateUserStatus,
+  deleteUser
 };

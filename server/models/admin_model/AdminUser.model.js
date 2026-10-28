@@ -107,11 +107,22 @@ const updateUserStatus = async (id, isActive) => {
   return getUserById(id);
 };
 
+// 7. Xóa tài khoản
+const deleteUser = async (id) => {
+  const [result] = await db.query(
+    "DELETE FROM users WHERE user_id = ?",
+    [id]
+  );
+
+  return result.affectedRows > 0;
+};
+
 module.exports = {
   getAllUsers,
   getUserById,
   findExistingUser,
   createUser,
   updateUser,
-  updateUserStatus
+  updateUserStatus,
+  deleteUser
 };

@@ -34,5 +34,6 @@ router.get("/users/:id", controller.getUserById);
 router.post("/users", controller.createUser);
 router.put("/users/:id", controller.updateUser);
 router.patch("/users/:id/status", controller.updateUserStatus);
+router.delete("/users/:id", controller.deleteUser);
 
 module.exports = router;
