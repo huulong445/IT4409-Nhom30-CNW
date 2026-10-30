@@ -1,14 +1,14 @@
 
 const bcrypt = require("bcryptjs");
 const userModel = require("../../models/admin_model/AdminUser.model");
-
-const ALLOWED_ROLES = [
-  "PATIENT",
-  "DOCTOR",
-  "RECEPTIONIST",
-  "LAB_TECH",
-  "ADMIN"
-];
+const { ALLOWED_ROLES } = require("../../config/roles");
+//const ALLOWED_ROLES = [
+  //"PATIENT",
+  //"DOCTOR",
+ // "RECEPTIONIST",
+  //"LAB_TECH",
+  //"ADMIN"
+//];
 
 const isValidId = (id) =>
   /^\d+$/.test(String(id)) && Number(id) > 0;
@@ -193,6 +193,16 @@ const updateUser = async (req, res) => {
         message: "Role không hợp lệ"
       });
     }
+    if (
+       Number(id) === req.user.user_id &&
+       data.role !== undefined &&
+       data.role !== req.user.role
+      ) {
+       return res.status(400).json({
+       success: false,
+       message: "Bạn không được tự thay đổi vai trò của mình",
+      });
+    }
 
     if (req.body.password !== undefined) {
       const { password } = req.body;
@@ -224,17 +234,18 @@ const updateUser = async (req, res) => {
       data.phone !== undefined
     ) {
       const existing = await userModel.findExistingUser({
-        username: data.username ?? currentUser.username,
-        email: data.email ?? currentUser.email,
-        phone: data.phone ?? currentUser.phone
+         username: data.username ?? currentUser.username,
+         email: data.email ?? currentUser.email,
+         phone: data.phone ?? currentUser.phone,
+         excludeUserId: Number(id),
       });
 
-      if (existing && existing.user_id !== Number(id)) {
-        return res.status(409).json({
+      if (existing) {
+          return res.status(409).json({
           success: false,
-          message: "Username, email hoặc phone đã tồn tại"
-        });
-      }
+          message: "Username, email hoặc phone đã tồn tại",
+      });
+     }
     }
 
     const user = await userModel.updateUser(Number(id), data);
@@ -280,6 +291,12 @@ const updateUserStatus = async (req, res) => {
         message: "is_active phải là true hoặc false"
       });
     }
+    if (Number(id) === req.user.user_id && is_active === false) {
+      return res.status(400).json({
+        success: false,
+        message: "Bạn không được tự khóa tài khoản của mình",
+      });
+    }
 
     const currentUser = await userModel.getUserById(Number(id));
 
@@ -312,10 +329,64 @@ const updateUserStatus = async (req, res) => {
   }
 };
 
+// DELETE: Xóa tài khoản
+const deleteUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!isValidId(id) || !Number.isSafeInteger(Number(id))) {
+      return res.status(400).json({
+        success: false,
+        message: "ID tài khoản không hợp lệ"
+      });
+    }
+
+    const userId = Number(id);
+
+    // Ngăn admin tự xóa tài khoản đang đăng nhập
+    if (userId === Number(req.user.user_id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Bạn không được tự xóa tài khoản của mình"
+      });
+    }
+
+    const deleted = await userModel.deleteUser(userId);
+
+    if (!deleted) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy tài khoản"
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Xóa tài khoản thành công"
+    });
+  } catch (error) {
+    console.error("deleteUser:", error.message);
+
+    if (error.code === "ER_ROW_IS_REFERENCED_2") {
+      return res.status(409).json({
+        success: false,
+        message:
+          "Tài khoản có dữ liệu liên quan nên không thể xóa. Bạn có thể khóa tài khoản."
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: "Lỗi server khi xóa tài khoản"
+    });
+  }
+};
+
 module.exports = {
   getAllUsers,
   getUserById,
   createUser,
   updateUser,
-  updateUserStatus
+  updateUserStatus,
+  deleteUser
 };

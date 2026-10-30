@@ -1,22 +1,34 @@
-
 const express = require("express");
+const controller = require("../../controllers/admin_controller/AdminUser.controller");
+const { authenticate } = require("../../middlewares/auth.middleware");
+const { requireRole } = require("../../middlewares/rbac.middleware");
+const { ROLES } = require("../../config/roles");
+
 const router = express.Router();
+const departmentController = require("../../controllers/admin_controller/AdminDepartment.controller");
+const staffController = require("../../controllers/admin_controller/AdminStaff.controller");
+router.use(authenticate, requireRole(ROLES.ADMIN));
 
-const adminUserController = require("../../controllers/admin_controller/AdminUser.controller");
+//Quan ly nhan vien
+router.get("/staff", staffController.getAllStaff);
+router.get("/staff/:id", staffController.getStaffById);
+router.post("/staff", staffController.createStaff);
+router.put("/staff/:id", staffController.updateStaff);
+router.delete("/staff/:id", staffController.deleteStaff);
 
-// Lấy danh sách tài khoản
-router.get("/users", adminUserController.getAllUsers);
+//Quan ly phong ban
+router.get("/departments", departmentController.getAllDepartments);
+router.get("/departments/:id", departmentController.getDepartmentById);
+router.post("/departments", departmentController.createDepartment);
+router.put("/departments/:id", departmentController.updateDepartment);
+router.delete("/departments/:id", departmentController.deleteDepartment);
 
-// Lấy chi tiết tài khoản theo ID
-router.get("/users/:id", adminUserController.getUserById);
-
-// Tạo tài khoản mới
-router.post("/users", adminUserController.createUser);
-
-// Cập nhật thông tin tài khoản
-router.put("/users/:id", adminUserController.updateUser);
-
-// Khóa hoặc mở khóa tài khoản
-router.patch("/users/:id/status", adminUserController.updateUserStatus);
+//Quan ly nguoi dung
+router.get("/users", controller.getAllUsers);
+router.get("/users/:id", controller.getUserById);
+router.post("/users", controller.createUser);
+router.put("/users/:id", controller.updateUser);
+router.patch("/users/:id/status", controller.updateUserStatus);
+router.delete("/users/:id", controller.deleteUser);
 
 module.exports = router;

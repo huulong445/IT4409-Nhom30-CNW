@@ -1,16 +1,18 @@
 const express = require("express");
-const router = express.Router();
 const userController = require("../controllers/user.controller");
+const { authenticate } = require("../middlewares/auth.middleware");
+const { requireRole } = require("../middlewares/rbac.middleware");
+const { ROLES } = require("../config/roles");
 
-// GET /api/v1/users
-const { verifyToken } = require("../middleware/auth.middleware");
-// test
-console.log(typeof verifyToken);
-console.log(typeof userController.getAllUsers);
-console.log(typeof userController.getUserById);
-console.log(typeof userController.login);
-
-router.get("/", verifyToken, userController.getAllUsers);
-router.get("/user/:id", verifyToken, userController.getUserById);
+const router = express.Router();
+router.get("/user/:id", authenticate, userController.getUserById);
 router.post("/login", userController.login);
+module.exports = router;
+router.get(
+  "/",
+  authenticate,
+  requireRole(ROLES.ADMIN),
+  userController.getAllUsers,
+);
+
 module.exports = router;

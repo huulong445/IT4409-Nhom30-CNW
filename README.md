@@ -129,7 +129,7 @@ npm run dev
 Server check
 
 ```
-http://localhost:5000/api/v1/health
+http://localhost:5000/api/v1/test
 ```
 
 ## Khởi tạo DB

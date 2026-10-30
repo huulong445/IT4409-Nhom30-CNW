@@ -27,13 +27,19 @@ const getUserById = async (id) => {
 };
 
 // 3. Kiểm tra username, email hoặc phone đã tồn tại
-const findExistingUser = async ({ username, email, phone }) => {
+const findExistingUser = async ({
+  username,
+  email,
+  phone,
+  excludeUserId = null,
+}) => {
   const [rows] = await db.query(
     `SELECT user_id, username, email, phone
      FROM users
-     WHERE username = ? OR email = ? OR phone = ?
+     WHERE (username = ? OR email = ? OR phone = ?)
+       AND (? IS NULL OR user_id <> ?)
      LIMIT 1`,
-    [username, email, phone]
+    [username, email, phone, excludeUserId, excludeUserId]
   );
 
   return rows[0] || null;
@@ -101,11 +107,22 @@ const updateUserStatus = async (id, isActive) => {
   return getUserById(id);
 };
 
+// 7. Xóa tài khoản
+const deleteUser = async (id) => {
+  const [result] = await db.query(
+    "DELETE FROM users WHERE user_id = ?",
+    [id]
+  );
+
+  return result.affectedRows > 0;
+};
+
 module.exports = {
   getAllUsers,
   getUserById,
   findExistingUser,
   createUser,
   updateUser,
-  updateUserStatus
+  updateUserStatus,
+  deleteUser
 };

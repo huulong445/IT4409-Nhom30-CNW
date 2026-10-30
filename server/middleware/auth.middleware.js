@@ -1,28 +1,65 @@
 const jwt = require("jsonwebtoken");
+const userModel = require("../models/admin_model/AdminUser.model");
 
-const verifyToken = (req, res, next) => {
-  const authHeader = req.headers["authorization"];
-  const token = authHeader && authHeader.split(" ")[1]; // Bearer <token>
-  if (!token) {
+const authenticate = async (req, res, next) => {
+  const authorization = req.get("authorization") || "";
+  const match = /^Bearer\s+(\S+)$/i.exec(authorization);
+
+  if (!match) {
     return res.status(401).json({
       success: false,
-      message: "'Truy cập bị từ chối! Vui lòng cung cấp token đăng nhập'",
+      message: "Vui lòng đăng nhập",
+    });
+  }
+
+  let payload;
+
+  try {
+    payload = jwt.verify(match[1], process.env.JWT_SECRET, {
+      algorithms: ["HS256"],
+    });
+
+    if (
+      typeof payload !== "object" ||
+      !/^[1-9]\d*$/.test(payload.sub || "") ||
+      !Number.isSafeInteger(Number(payload.sub))
+    ) {
+      throw new Error("Invalid subject");
+    }
+  } catch {
+    return res.status(401).json({
+      success: false,
+      message: "Token không hợp lệ hoặc đã hết hạn",
     });
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || "secret_key");
-    req.user = decoded;
-    next();
+    const user = await userModel.getUserById(Number(payload.sub));
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: "Tài khoản không tồn tại",
+      });
+    }
+
+    if (!user.is_active) {
+      return res.status(403).json({
+        success: false,
+        message: "Tài khoản đã bị khóa",
+      });
+    }
+
+    req.user = user;
+    return next();
   } catch (error) {
-    return res.status(403).json({
+    console.error("authenticate:", error.message);
+
+    return res.status(500).json({
       success: false,
-      message: "Token không hợp lệ hoặc đã hết hạn!",
+      message: "Lỗi server khi xác thực",
     });
   }
 };
-// 403: server understood the req but refuses to authorize it
-// 401: lacks authen credentials for the requested resources
-module.exports = {
-  verifyToken,
-};
+
+module.exports = { authenticate };
