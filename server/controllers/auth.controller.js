@@ -1,6 +1,7 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const authModel = require("../models/auth.model");
+const { use } = require("react");
 
 const login = async (req, res) => {
   try {
@@ -20,10 +21,7 @@ const login = async (req, res) => {
 
     const user = await authModel.findByUsername(username.trim());
 
-    if (
-      !user ||
-      !(await bcrypt.compare(password, user.password_hash))
-    ) {
+    if (!user || !(await bcrypt.compare(password, user.password_hash))) {
       return res.status(401).json({
         success: false,
         message: "Tên đăng nhập hoặc mật khẩu không đúng",
@@ -37,15 +35,11 @@ const login = async (req, res) => {
       });
     }
 
-    const token = jwt.sign(
-      {},
-      process.env.JWT_SECRET,
-      {
-        algorithm: "HS256",
-        subject: String(user.user_id),
-        expiresIn: process.env.JWT_EXPIRES_IN || "1h",
-      }
-    );
+    const token = jwt.sign({}, process.env.JWT_SECRET, {
+      algorithm: "HS256",
+      subject: String(user.user_id),
+      expiresIn: process.env.JWT_EXPIRES_IN || "1h",
+    });
 
     return res.status(200).json({
       success: true,
@@ -68,4 +62,28 @@ const login = async (req, res) => {
   }
 };
 
+const register = async (req, res) => {
+  try {
+    const { username, email, phone, password, confirm_pass } = req.body || {};
+
+    // validate
+    if (
+      !typeof user !== "string" ||
+      !username.trim() ||
+      typeof password !== "string" ||
+      !password ||
+      !typeof email !== "string" ||
+      !email ||
+      !typeof phone !== "string" ||
+      !phone
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Vui lòng nhập nhập đầy đủ thông tin đăng kí",
+      });
+    }
+    // to be continued...
+    // const res = await authModel.;
+  } catch (error) {}
+};
 module.exports = { login };

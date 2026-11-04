@@ -6,10 +6,13 @@ const findByUsername = async (username) => {
      FROM users
      WHERE username = ?
      LIMIT 1`,
-    [username]
+    [username],
   );
 
   return rows[0] || null;
 };
 
+const register = async () => {
+  const res = await db.query("INSERT FROM");
+};
 module.exports = { findByUsername };
