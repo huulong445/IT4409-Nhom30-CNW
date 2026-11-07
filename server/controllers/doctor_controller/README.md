@@ -95,9 +95,32 @@ d, Xóa chỉ định
 - Input: lab_request_id ở query
 
 4. Kê đơn thuốc
-a, Tạo đơn thuốc
-- API: /api/v1/doctor/prescriptions
-- Input: {record_id, doctor_id, medication_details} ở request body
+a, Tạo đơn thuốc: click appointment => tạo đơn thuốc 
+- API: POST /api/v1/doctor/prescriptions
+- input: 
+Input 1: record_id, doctor_id — Vị trí: req.body
+Input 2: medication_details (Mảng chứa các đối tượng: med_id, quantity, unit_price, dosage, note) — Vị trí: req.body
+- Ví dụ: 
+{
+  "record_id": 13,
+  "doctor_id": 2,
+  "medication_details": [
+    {
+      "med_id": 1,
+      "quantity": 15,
+      "unit_price": 800,
+      "dosage": "1 viên khi sốt trên 38.5 độ C",
+      "note": "Cách nhau tối thiểu 6 giờ"
+    },
+    {
+      "med_id": 3,
+      "quantity": 10,
+      "unit_price": 1200,
+      "dosage": "Sáng 1 viên, Tối 1 viên",
+      "note": "Uống sau khi ăn"
+    }
+  ]
+}
 
 b, Xem đơn thuốc
 - API: /api/v1/doctor/prescriptions : Input: record_id
@@ -136,32 +159,7 @@ b, Xem đơn thuốc
     ]
 }
 
-c, Tạo đơn thuốc
-- API: POST /api/v1/doctor/prescriptions
-- input: 
-Input 1: record_id, doctor_id — Vị trí: req.body
-Input 2: medication_details (Mảng chứa các đối tượng: med_id, quantity, unit_price, dosage, note) — Vị trí: req.body
-- Ví dụ: 
-{
-  "record_id": 13,
-  "doctor_id": 2,
-  "medication_details": [
-    {
-      "med_id": 1,
-      "quantity": 15,
-      "unit_price": 800,
-      "dosage": "1 viên khi sốt trên 38.5 độ C",
-      "note": "Cách nhau tối thiểu 6 giờ"
-    },
-    {
-      "med_id": 3,
-      "quantity": 10,
-      "unit_price": 1200,
-      "dosage": "Sáng 1 viên, Tối 1 viên",
-      "note": "Uống sau khi ăn"
-    }
-  ]
-}
+
 
 5. Lấy kết quả LabResults
 - API: GET /api/v1/doctor/lab-results
