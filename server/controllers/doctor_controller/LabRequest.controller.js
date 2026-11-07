@@ -35,7 +35,7 @@ exports.GetLabRequests = async (req, res) => {
 // PUT /api/lab-requests/:lab_request_id
 exports.UpdateLabRequest = async (req, res) => {
     try {
-        const { lab_request_id } = req.params;
+        const { lab_request_id } = req.query;
         const { test_type, status } = req.body;
         
         const result = await LabRequestModel.update(lab_request_id, { test_type, status });
@@ -53,7 +53,7 @@ exports.UpdateLabRequest = async (req, res) => {
 // DELETE /api/lab-requests/:lab_request_id
 exports.DeleteLabRequest = async (req, res) => {
     try {
-        const { lab_request_id } = req.params;
+        const { lab_request_id } = req.query;
         const result = await LabRequestModel.remove(lab_request_id);
 
         if (result.affectedRows === 0) {

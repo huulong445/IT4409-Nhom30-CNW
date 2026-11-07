@@ -6,7 +6,7 @@ const labRequestController = require("../controllers/doctor_controller/LabReques
 const medicalRecordController = require("../controllers/doctor_controller/MedicalRecord.controller");
 const prescriptionController = require("../controllers/doctor_controller/Prescription.controller");
 const doctorController = require("../controllers/doctor_controller/WaitingPatients.controller");
-
+const labResultController = require("../controllers/doctor_controller/LabResult.controller");
 // Middleware xác thực
 const { verifyToken } = require("../middleware/auth.middleware");
 
@@ -48,32 +48,36 @@ const { verifyToken } = require("../middleware/auth.middleware");
 // ==========================================
 router.post("/lab-requests", labRequestController.CreateLabRequest); // OK
 router.get("/lab-requests", labRequestController.GetLabRequests); //OK
-router.put("/lab-requests/:lab_request_id", labRequestController.UpdateLabRequest);
-router.delete("/lab-requests/:lab_request_id", labRequestController.DeleteLabRequest);
+router.put("/lab-requests", labRequestController.UpdateLabRequest);
+router.delete("/lab-requests", labRequestController.DeleteLabRequest);
 
 
 // ==========================================
 // 2. ROUTES CHO MEDICAL RECORDS (Bệnh án điện tử)
 // ==========================================
 router.post("/medical-records", medicalRecordController.CreateMedicalRecord);
-router.get("/medical-records/:record_id", medicalRecordController.GetMedicalRecordById);
-router.get("/medical-records/patient/:patient_id", medicalRecordController.GetMedicalRecordsByPatient);
-router.put("/medical-records/:record_id", medicalRecordController.UpdateMedicalRecord);
-router.delete("/medical-records/:record_id", medicalRecordController.DeleteMedicalRecord);
+router.get("/medical-records", medicalRecordController.GetMedicalRecordById);
+router.get("/medical-records/patient", medicalRecordController.GetMedicalRecordsByPatient);
+router.put("/medical-records", medicalRecordController.UpdateMedicalRecord);
+router.delete("/medical-records", medicalRecordController.DeleteMedicalRecord);
 
 
 // ==========================================
 // 3. ROUTES CHO PRESCRIPTIONS (Đơn thuốc)
 // ==========================================
 router.post("/prescriptions", prescriptionController.CreatePrescription);
-router.get("/prescriptions/:record_id", prescriptionController.GetPrescriptionByRecord);
-router.put("/prescriptions/:prescription_id", prescriptionController.UpdatePrescription);
-router.delete("/prescriptions/:prescription_id", prescriptionController.DeletePrescription);
+router.get("/prescriptions", prescriptionController.GetPrescriptionByRecord);
+router.get("/prescriptions/patient", prescriptionController.GetPrescriptionByRecord);
+router.put("/prescriptions", prescriptionController.UpdatePrescription);
+router.delete("/prescriptions", prescriptionController.DeletePrescription);
 
 
 // ==========================================
 // 4. ROUTES CHO DOCTOR (Bác sĩ - Bệnh nhân chờ khám)
 // ==========================================
 router.get("/appointments", doctorController.GetWaitingPatients);
+
+// GET /api/v1/doctor/lab-results?lab_request_id=12
+router.get("/lab-results", labResultController.GetLabResultById);
 
 module.exports = router;

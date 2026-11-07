@@ -24,10 +24,10 @@ exports.CreateMedicalRecord = async (req, res) => {
     }
 };
 
-// GET /api/medical-records/:record_id
+// GET /api/medical-records/
 exports.GetMedicalRecordById = async (req, res) => {
     try {
-        const { record_id } = req.params;
+        const { record_id } = req.query;
         const record = await MedicalRecordModel.getById(record_id);
 
         if (!record) {
@@ -43,7 +43,7 @@ exports.GetMedicalRecordById = async (req, res) => {
 // GET /api/medical-records/patient/:patient_id
 exports.GetMedicalRecordsByPatient = async (req, res) => {
     try {
-        const { patient_id } = req.params;
+        const { patient_id } = req.query;
         const records = await MedicalRecordModel.getByPatientId(patient_id);
 
         return res.status(200).json({ 
@@ -59,7 +59,7 @@ exports.GetMedicalRecordsByPatient = async (req, res) => {
 // PUT /api/medical-records/:record_id
 exports.UpdateMedicalRecord = async (req, res) => {
     try {
-        const { record_id } = req.params;
+        const { record_id } = req.query;
         const { symptoms, diagnosis_icd10, notes } = req.body;
 
         const result = await MedicalRecordModel.update(record_id, { symptoms, diagnosis_icd10, notes });
@@ -77,7 +77,7 @@ exports.UpdateMedicalRecord = async (req, res) => {
 // DELETE /api/medical-records/:record_id
 exports.DeleteMedicalRecord = async (req, res) => {
     try {
-        const { record_id } = req.params;
+        const { record_id } = req.query;
         const result = await MedicalRecordModel.remove(record_id);
 
         if (result.affectedRows === 0) {
