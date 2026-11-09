@@ -13,29 +13,62 @@ const { verifyToken } = require("../middleware/auth.middleware");
 // ==========================================
 // 1. ROUTES CHO LAB REQUESTS (Cận lâm sàng)
 // ==========================================
-router.post("/lab-requests", labRequestController.CreateLabRequest);
-router.get("/lab-requests", labRequestController.GetLabRequests);
-router.put("/lab-requests/:lab_request_id", verifyToken, labRequestController.UpdateLabRequest);
-router.delete("/lab-requests/:lab_request_id", verifyToken, labRequestController.DeleteLabRequest);
+// router.post("/lab-requests", labRequestController.CreateLabRequest);
+// router.get("/lab-requests", labRequestController.GetLabRequests);
+// router.put("/lab-requests/:lab_request_id", verifyToken, labRequestController.UpdateLabRequest);
+// router.delete("/lab-requests/:lab_request_id", verifyToken, labRequestController.DeleteLabRequest);
+
+
+// // ==========================================
+// // 2. ROUTES CHO MEDICAL RECORDS (Bệnh án điện tử)
+// // ==========================================
+// router.post("/medical-records", verifyToken, medicalRecordController.CreateMedicalRecord);
+// router.get("/medical-records/:record_id", verifyToken, medicalRecordController.GetMedicalRecordById);
+// router.get("/medical-records/patient/:patient_id", verifyToken, medicalRecordController.GetMedicalRecordsByPatient);
+// router.put("/medical-records/:record_id", verifyToken, medicalRecordController.UpdateMedicalRecord);
+// router.delete("/medical-records/:record_id", verifyToken, medicalRecordController.DeleteMedicalRecord);
+
+
+// // ==========================================
+// // 3. ROUTES CHO PRESCRIPTIONS (Đơn thuốc)
+// // ==========================================
+// router.post("/prescriptions", verifyToken, prescriptionController.CreatePrescription);
+// router.get("/prescriptions/:record_id", prescriptionController.GetPrescriptionByRecord);
+// router.put("/prescriptions/:prescription_id", verifyToken, prescriptionController.UpdatePrescription);
+// router.delete("/prescriptions/:prescription_id", verifyToken, prescriptionController.DeletePrescription);
+
+
+// // ==========================================
+// // 4. ROUTES CHO DOCTOR (Bác sĩ - Bệnh nhân chờ khám)
+// // ==========================================
+// router.get("/appointments", doctorController.GetWaitingPatients);
+
+// ==========================================
+// 1. ROUTES CHO LAB REQUESTS (Yêu cầu xét nghiệm)
+// ==========================================
+router.post("/lab-requests", labRequestController.CreateLabRequest); // OK
+router.get("/lab-requests", labRequestController.GetLabRequests); //OK
+router.put("/lab-requests/:lab_request_id", labRequestController.UpdateLabRequest);
+router.delete("/lab-requests/:lab_request_id", labRequestController.DeleteLabRequest);
 
 
 // ==========================================
 // 2. ROUTES CHO MEDICAL RECORDS (Bệnh án điện tử)
 // ==========================================
-router.post("/medical-records", verifyToken, medicalRecordController.CreateMedicalRecord);
-router.get("/medical-records/:record_id", verifyToken, medicalRecordController.GetMedicalRecordById);
-router.get("/medical-records/patient/:patient_id", verifyToken, medicalRecordController.GetMedicalRecordsByPatient);
-router.put("/medical-records/:record_id", verifyToken, medicalRecordController.UpdateMedicalRecord);
-router.delete("/medical-records/:record_id", verifyToken, medicalRecordController.DeleteMedicalRecord);
+router.post("/medical-records", medicalRecordController.CreateMedicalRecord);
+router.get("/medical-records/:record_id", medicalRecordController.GetMedicalRecordById);
+router.get("/medical-records/patient/:patient_id", medicalRecordController.GetMedicalRecordsByPatient);
+router.put("/medical-records/:record_id", medicalRecordController.UpdateMedicalRecord);
+router.delete("/medical-records/:record_id", medicalRecordController.DeleteMedicalRecord);
 
 
 // ==========================================
 // 3. ROUTES CHO PRESCRIPTIONS (Đơn thuốc)
 // ==========================================
-router.post("/prescriptions", verifyToken, prescriptionController.CreatePrescription);
+router.post("/prescriptions", prescriptionController.CreatePrescription);
 router.get("/prescriptions/:record_id", prescriptionController.GetPrescriptionByRecord);
-router.put("/prescriptions/:prescription_id", verifyToken, prescriptionController.UpdatePrescription);
-router.delete("/prescriptions/:prescription_id", verifyToken, prescriptionController.DeletePrescription);
+router.put("/prescriptions/:prescription_id", prescriptionController.UpdatePrescription);
+router.delete("/prescriptions/:prescription_id", prescriptionController.DeletePrescription);
 
 
 // ==========================================
