@@ -16,11 +16,20 @@ const pool = mysql.createPool({
 
 const testDBCon = async () => {
   try {
-    const conn = pool.getConnection();
-    console.log("Kết nối DB thành công");
-    (await conn).release();
+    const conn = await pool.getConnection();
+    console.log("Kết nối DB thành công!");
+    conn.release();
   } catch (error) {
-    console.error("Kết nối DB thất bại: ", error.message);
+    console.error("Kết nối DB thất bại:");
+    console.error("  - Mã lỗi:", error.code);
+    console.error("  - Chi tiết:", error.message);
+    if (error.code === 'ECONNREFUSED') {
+      console.error("  -> Gợi ý: Dịch vụ MySQL chưa được khởi động (bật XAMPP/MySQL service trên máy).");
+    } else if (error.code === 'ER_ACCESS_DENIED_ERROR') {
+      console.error("  -> Gợi ý: Sai tên đăng nhập (DB_USER) hoặc mật khẩu (DB_PASSWORD) trong file .env");
+    } else if (error.code === 'ER_BAD_DB_ERROR') {
+      console.error(`  -> Gợi ý: Chưa tồn tại database '${process.env.DB_NAME || "hospital"}'. Hãy tạo database bằng lệnh: CREATE DATABASE hospital;`);
+    }
   }
 };
 

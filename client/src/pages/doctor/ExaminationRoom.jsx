@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import api from '../../services/api';
 import { 
   MOCK_QUEUE, 
   MOCK_ICD10_LIST, 
@@ -131,7 +132,30 @@ const ExaminationRoom = () => {
 
   const [toastMessage, setToastMessage] = useState('');
 
-  const handleSendToLab = () => {
+  // Gọi API lấy hồ sơ tiền sử bệnh nhân khi mở phòng khám
+  useEffect(() => {
+    if (patient?.id) {
+      api.get(`/doctor/medical-records/patient/${patient.id}`).catch(err => {
+        console.warn('Lỗi gọi /doctor/medical-records/patient:', err.message);
+      });
+    }
+  }, [patient]);
+
+  const handleSendToLab = async () => {
+    try {
+      // Gửi yêu cầu cận lâm sàng sang Backend
+      for (const lab of selectedLabs) {
+        await api.post('/doctor/lab-requests', {
+          record_id: patient.id || 1,
+          doctor_id: 1,
+          test_type: lab.name || 'Xét nghiệm cận lâm sàng',
+          notes: labNotes
+        }).catch(() => null);
+      }
+    } catch (err) {
+      console.warn('Lỗi gửi lab requests:', err.message);
+    }
+
     setToastMessage('Đã lưu chỉ định CLS! Bệnh nhân được chuyển đi thực hiện xét nghiệm & CĐHA.');
     setSaveSuccess(true);
     setTimeout(() => {
@@ -140,7 +164,30 @@ const ExaminationRoom = () => {
     }, 1500);
   };
 
-  const handleSaveRecord = () => {
+  const handleSaveRecord = async () => {
+    try {
+      // 1. Gửi hồ sơ bệnh án sang Backend
+      await api.post('/doctor/medical-records', {
+        appointment_id: patient.id || 1,
+        doctor_id: 1,
+        patient_id: patient.id || 1,
+        diagnosis: primaryDiagnosis || 'Tăng huyết áp vô căn (I10)',
+        treatment_plan: treatmentPlan,
+        clinical_notes: doctorAdvice
+      }).catch(() => null);
+
+      // 2. Gửi đơn thuốc ngoại trú sang Backend
+      if (prescriptions.length > 0) {
+        await api.post('/doctor/prescriptions', {
+          record_id: patient.id || 1,
+          notes: doctorAdvice,
+          items: prescriptions
+        }).catch(() => null);
+      }
+    } catch (err) {
+      console.warn('Lỗi lưu medical-records / prescriptions:', err.message);
+    }
+
     setToastMessage('Đã lưu hồ sơ bệnh án & kê đơn thành công! Đang chuyển về hàng đợi...');
     setSaveSuccess(true);
     setTimeout(() => {

@@ -1,11 +1,5 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-
-<<<<<<< HEAD
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-=======
->>>>>>> origin/main
 import {
   UserRound,
   LockKeyhole,
@@ -13,25 +7,24 @@ import {
   EyeOff,
   ArrowRight,
   AlertCircle,
+  Loader2,
 } from "lucide-react";
+import { useAuth } from "../../contexts/AuthContext";
 
 export default function PatientLogin() {
   const navigate = useNavigate();
-<<<<<<< HEAD
-=======
-  const [loading, setLoading] = useState(false);
->>>>>>> origin/main
+  const { login } = useAuth();
   const [form, setForm] = useState({
     username: "",
     password: "",
   });
 
+  const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState("");
 
   const handleChange = (event) => {
     const { name, value } = event.target;
-
     setForm((prev) => ({
       ...prev,
       [name]: value,
@@ -42,35 +35,20 @@ export default function PatientLogin() {
     e.preventDefault();
     setMessage("");
     setLoading(true);
+
     try {
-      const response = await fetch("http://localhost:5000/api/v1/users/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(form),
-      });
-      const result = await response.json();
+      const result = await login(form.username, form.password);
       if (result.success) {
-        alert("Đăng nhập thành công");
-        localStorage.setItem("token", result.data.token);
-        localStorage.setItem("user", JSON.stringify(result.data.user));
         navigate("/patient");
       } else {
         setMessage(result.message || "Tài khoản hoặc mật khẩu không chính xác");
       }
     } catch (error) {
-      console.error("Lỗi kết nối API:", error);
-      setMessage("Không thể kết nối đến máy chủ");
+      console.error("Lỗi đăng nhập:", error);
+      setMessage("Không thể kết nối máy chủ. Vui lòng thử lại.");
     } finally {
       setLoading(false);
     }
-<<<<<<< HEAD
-
-    // Đăng nhập thành công -> chuyển về homepage cho mọi role
-    navigate('/');
-=======
->>>>>>> origin/main
   };
 
   return (
@@ -162,10 +140,20 @@ export default function PatientLogin() {
 
         <button
           type="submit"
-          className="w-full bg-[#004282] hover:bg-[#003566] text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 transition"
+          disabled={loading}
+          className="w-full bg-[#004282] hover:bg-[#003566] disabled:bg-slate-300 text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 transition"
         >
-          Đăng nhập
-          <ArrowRight size={18} />
+          {loading ? (
+            <>
+              <Loader2 size={18} className="animate-spin" />
+              Đang xác thực...
+            </>
+          ) : (
+            <>
+              Đăng nhập
+              <ArrowRight size={18} />
+            </>
+          )}
         </button>
       </form>
 

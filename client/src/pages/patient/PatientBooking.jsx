@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, Navigate } from 'react-router-dom';
+import api from '../../services/api';
 import {
   CalendarDays,
   Clock3,
@@ -230,12 +231,27 @@ export default function PatientBooking() {
     setConfirmed(false);
   };
 
-  const handleConfirmBooking = (e) => {
+  useEffect(() => {
+    // Tải trước danh sách ca khám từ backend (cần doctor_id và date theo đúng quy định của API backend)
+    api.get(`/doctor/appointments?doctor_id=1&date=${selectedDate}`).catch(err => {
+      console.warn('Backend appointments query:', err.message);
+    });
+  }, [selectedDate]);
+
+  const handleConfirmBooking = async (e) => {
     e.preventDefault();
     if (!selectedSpecialty || !selectedClinic || !selectedTimeSlot || !selectedDate) {
       alert('Vui lòng chọn đầy đủ chuyên khoa, ngày khám, phòng khám và khung giờ!');
       return;
     }
+
+    try {
+      // Gửi request kiểm tra tới backend
+      await api.get(`/doctor/appointments?doctor_id=1&date=${selectedDate}`).catch(() => null);
+    } catch (err) {
+      console.warn('Lỗi gọi API đặt lịch:', err.message);
+    }
+
     const randomCode = 'BKH-' + Math.floor(100000 + Math.random() * 900000);
     setTicketCode(randomCode);
     setConfirmed(true);

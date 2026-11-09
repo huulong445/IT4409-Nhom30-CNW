@@ -77,7 +77,7 @@ const Login = () => {
     }
   };
 
-  const handleLoginSubmit = (e) => {
+  const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage('');
 
@@ -90,7 +90,7 @@ const Login = () => {
       return;
     }
 
-    const res = login(identifier, password);
+    const res = await login(identifier, password);
     if (res.success) {
       redirectAfterLogin(res.user);
     } else {
@@ -98,8 +98,8 @@ const Login = () => {
     }
   };
 
-  const handleQuickLogin = (userItem) => {
-    loginAs(userItem);
+  const handleQuickLogin = async (userItem) => {
+    await loginAs(userItem);
     redirectAfterLogin(userItem);
   };
 

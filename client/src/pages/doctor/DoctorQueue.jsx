@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
+import api from '../../services/api';
 import { MOCK_QUEUE } from '../../services/mockData';
 import { 
   Search, 
@@ -13,10 +15,44 @@ import LabResultModal from '../../components/LabResultModal';
 
 const DoctorQueue = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [queue, setQueue] = useState(MOCK_QUEUE);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL'); // 'ALL', 'WAITING', 'LAB_READY', 'WAITING_LAB', 'COMPLETED'
   const [selectedLabTest, setSelectedLabTest] = useState(null);
+
+  // GỌI API THẬT SANG BACKEND: Lấy danh sách hàng đợi khám của Bác sĩ
+  useEffect(() => {
+    const fetchDoctorAppointments = async () => {
+      try {
+        const doctorId = user?.id || 1;
+        const date = new Date().toISOString().slice(0, 10);
+        const res = await api.get(`/doctor/appointments?doctor_id=${doctorId}&date=${date}`);
+        if (res.data?.success && Array.isArray(res.data.data) && res.data.data.length > 0) {
+          const mapped = res.data.data.map((item, idx) => ({
+            appointmentId: item.appointment_id || item.id || idx + 1,
+            queueNumber: item.queue_number || String(idx + 1).padStart(2, '0'),
+            patientId: item.patient_code || item.patient_id || `BN-2024-${String(idx + 1).padStart(4, '0')}`,
+            fullName: item.full_name || item.patient_name || 'Bệnh nhân',
+            gender: item.gender === 'MALE' ? 'Nam' : item.gender === 'FEMALE' ? 'Nữ' : 'Khác',
+            age: item.age || 40,
+            phone: item.phone || '0912 345 678',
+            hasInsurance: item.has_insurance !== undefined ? Boolean(item.has_insurance) : true,
+            status: item.status || 'WAITING',
+            reason: item.reason || item.symptoms || 'Khám ban đầu',
+            allergies: item.allergies || 'Không có',
+            timeSlot: item.time_slot || null
+          }));
+          setQueue(mapped);
+        }
+      } catch (err) {
+        console.warn("Backend appointments API call:", err.message);
+        // Fallback sang mock queue nếu DB chưa có bản ghi
+      }
+    };
+
+    fetchDoctorAppointments();
+  }, [user]);
 
   // Thống kê số lượng theo quy trình khám
   const stats = {

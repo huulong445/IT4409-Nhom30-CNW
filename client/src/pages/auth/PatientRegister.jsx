@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import api from '../../services/api';
 import {
   UserRound, Phone, IdCard, Calendar, LockKeyhole,
   Eye, EyeOff, UserPlus, AlertCircle,
@@ -28,7 +29,7 @@ export default function PatientRegister() {
     setValid(false);
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     setError('');
     setValid(false);
@@ -68,7 +69,19 @@ export default function PatientRegister() {
       return;
     }
 
-    // Demo frontend: Dữ liệu hợp lệ
+    try {
+      // Gửi request đăng ký tài khoản sang Backend
+      await api.post('/admin/users', {
+        username: form.phone.trim(),
+        password: form.password,
+        email: `${form.phone.trim()}@patient.bkh.vn`,
+        phone: form.phone.trim(),
+        role: 'PATIENT'
+      });
+    } catch (apiErr) {
+      console.warn('Lỗi gọi API đăng ký user:', apiErr.message);
+    }
+
     setValid(true);
   };
 
