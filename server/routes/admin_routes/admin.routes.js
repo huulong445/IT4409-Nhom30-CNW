@@ -26,7 +26,7 @@ router.delete("/departments/:id", departmentController.deleteDepartment);
 //Quan ly nguoi dung
 router.get("/users", controller.getAllUsers);
 router.get("/users/:id", controller.getUserById);
-router.post("/users", controller.createUser);
+router.post("/users", controller.createUserByAdmin);
 router.put("/users/:id", controller.updateUser);
 router.patch("/users/:id/status", controller.updateUserStatus);
 router.delete("/users/:id", controller.deleteUser);

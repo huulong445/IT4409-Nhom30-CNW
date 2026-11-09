@@ -1,8 +1,7 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const authModel = require("../models/auth.model");
-const { use } = require("react");
-
+const AdminUserModel = require("../models/admin_model/AdminUser.model");
 const login = async (req, res) => {
   try {
     const { username, password } = req.body || {};
@@ -35,11 +34,21 @@ const login = async (req, res) => {
       });
     }
 
-    const token = jwt.sign({}, process.env.JWT_SECRET, {
-      algorithm: "HS256",
-      subject: String(user.user_id),
-      expiresIn: process.env.JWT_EXPIRES_IN || "1h",
-    });
+    const payload = {
+      userId: user.user_id,
+      role: user.role,
+      username: user.username,
+    };
+
+    const token = jwt.sign(
+      payload,
+      process.env.JWT_SECRET || "hospital_secret_key",
+      {
+        algorithm: "HS256",
+        subject: String(user.user_id),
+        expiresIn: process.env.JWT_EXPIRES_IN || "1h",
+      },
+    );
 
     return res.status(200).json({
       success: true,
@@ -64,26 +73,83 @@ const login = async (req, res) => {
 
 const register = async (req, res) => {
   try {
-    const { username, email, phone, password, confirm_pass } = req.body || {};
+    const { username, password, email, phone } = req.body;
 
-    // validate
     if (
-      !typeof user !== "string" ||
-      !username.trim() ||
+      typeof username !== "string" ||
       typeof password !== "string" ||
+      typeof email !== "string" ||
+      typeof phone !== "string" ||
+      !username.trim() ||
       !password ||
-      !typeof email !== "string" ||
-      !email ||
-      !typeof phone !== "string" ||
-      !phone
+      !email.trim() ||
+      !phone.trim()
     ) {
       return res.status(400).json({
         success: false,
-        message: "Vui lòng nhập nhập đầy đủ thông tin đăng kí",
+        message: "Vui lòng nhập đầy đủ username, password và email!",
       });
     }
-    // to be continued...
-    // const res = await authModel.;
-  } catch (error) {}
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      return res.status(400).json({
+        success: false,
+        message: "Địa chỉ Email không đúng định dạng!",
+      });
+    }
+    if (password.length < 8 || password.length > 72) {
+      return res.status(400).json({
+        success: false,
+        message: "Mật khẩu phải có độ dài từ 8 đến 72 ký tự!",
+      });
+    }
+
+    const cleanData = {
+      username: username.trim(),
+      email: email.trim().toLowerCase(),
+      phone: phone.trim(),
+    };
+
+    const existing = await AdminUserModel.findExistingUser(cleanData);
+    if (existing) {
+      return res.status(409).json({
+        success: false,
+        message: "Username, Email hoặc Số điện thoại đã được sử dụng!",
+      });
+    }
+
+    const password_hash = await bcrypt.hash(password, 10);
+
+    const newUser = await AdminUserModel.createUser({
+      ...cleanData,
+      password_hash,
+      role: "PATIENT",
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "Đăng ký tài khoản thành công!",
+      data: {
+        user_id: newUser.insertId || newUser.user_id,
+        username: cleanData.username,
+        email: cleanData.email,
+        role: "PATIENT",
+      },
+    });
+  } catch (error) {
+    console.error("Lỗi register:", error.message);
+
+    if (error.code === "ER_DUP_ENTRY") {
+      return res.status(409).json({
+        success: false,
+        message: "Username, Email hoặc Số điện thoại đã tồn tại!",
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: "Lỗi server nội bộ khi đăng ký tài khoản!",
+    });
+  }
 };
-module.exports = { login };
+module.exports = { login, register };
