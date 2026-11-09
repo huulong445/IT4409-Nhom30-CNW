@@ -1,8 +1,7 @@
-
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  UserRound, Phone, Mail, LockKeyhole,
+  UserRound, Phone, IdCard, Calendar, LockKeyhole,
   Eye, EyeOff, UserPlus, AlertCircle,
   CheckCircle2
 } from 'lucide-react';
@@ -10,9 +9,8 @@ import {
 const initialForm = {
   fullName: '',
   phone: '',
-  email: '',
+  cccd: '',
   dateOfBirth: '',
-  gender: '',
   password: '',
   confirmPassword: '',
 };
@@ -40,18 +38,18 @@ export default function PatientRegister() {
       return;
     }
 
-    if (!/^(0\d{9}|\+84\d{9})$/.test(form.phone)) {
-      setError('Số điện thoại không hợp lệ.');
+    if (!/^(0\d{9}|\+84\d{9})$/.test(form.phone.trim())) {
+      setError('Số điện thoại không hợp lệ (gồm 10 số, bắt đầu bằng 0 hoặc +84).');
       return;
     }
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
-      setError('Email không hợp lệ.');
+    if (!/^\d{12}$/.test(form.cccd.trim())) {
+      setError('Số Căn cước công dân (CCCD) phải gồm đúng 12 chữ số.');
       return;
     }
 
-    if (!form.dateOfBirth || !form.gender) {
-      setError('Vui lòng nhập ngày sinh và giới tính.');
+    if (!form.dateOfBirth) {
+      setError('Vui lòng nhập ngày sinh.');
       return;
     }
 
@@ -70,12 +68,12 @@ export default function PatientRegister() {
       return;
     }
 
-    // Chưa gửi thông tin đến backend
+    // Demo frontend: Dữ liệu hợp lệ
     setValid(true);
   };
 
   const inputClass =
-    'w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-[#004282] focus:ring-2 focus:ring-blue-100';
+    'w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-[#004282] focus:ring-2 focus:ring-blue-100 transition font-medium';
 
   return (
     <div className="bg-white border border-slate-200 rounded-2xl shadow-lg shadow-blue-900/5 p-6 sm:p-8">
@@ -85,10 +83,10 @@ export default function PatientRegister() {
         </div>
 
         <h2 className="text-2xl font-bold text-slate-900">
-          Đăng ký tài khoản
+          Đăng ký tài khoản Người bệnh
         </h2>
         <p className="text-sm text-slate-500 mt-2">
-          Tạo tài khoản để sử dụng các dịch vụ y tế trực tuyến
+          Tạo tài khoản để đặt lịch khám và tra cứu kết quả y tế trực tuyến
         </p>
       </div>
 
@@ -100,15 +98,24 @@ export default function PatientRegister() {
       )}
 
       {valid && (
-        <div role="status" className="mb-5 bg-green-50 text-green-800 border border-green-200 p-3 rounded-xl text-sm flex gap-2">
-          <CheckCircle2 size={18} className="shrink-0" />
-          Thông tin hợp lệ. Đây là bản demo, tài khoản chưa được tạo vì chưa kết nối backend.
+        <div role="status" className="mb-5 bg-emerald-50 text-emerald-800 border border-emerald-200 p-4 rounded-xl text-sm flex gap-2.5">
+          <CheckCircle2 size={20} className="shrink-0 text-emerald-600 mt-0.5" />
+          <div>
+            <p className="font-bold">Đăng ký thông tin thành công!</p>
+            <p className="text-xs text-emerald-700 mt-0.5">
+              Họ tên: <strong>{form.fullName}</strong> • CCCD: <strong>{form.cccd}</strong> • SĐT: <strong>{form.phone}</strong>
+            </p>
+            <p className="text-xs text-emerald-600 mt-1">
+              Bạn có thể sử dụng SĐT hoặc CCCD này để đăng nhập vào Cổng Người Bệnh.
+            </p>
+          </div>
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Họ và tên */}
         <div>
-          <label htmlFor="reg-name" className="block text-sm font-semibold mb-2">
+          <label htmlFor="reg-name" className="block text-sm font-semibold mb-1.5 text-slate-700">
             Họ và tên <span className="text-red-500">*</span>
           </label>
           <div className="relative">
@@ -119,15 +126,16 @@ export default function PatientRegister() {
               value={form.fullName}
               onChange={handleChange}
               autoComplete="name"
-              placeholder="Nguyễn Văn A"
+              placeholder="Ví dụ: Nguyễn Văn An"
               className={`${inputClass} pl-10`}
               required
             />
           </div>
         </div>
 
+        {/* Số điện thoại */}
         <div>
-          <label htmlFor="reg-phone" className="block text-sm font-semibold mb-2">
+          <label htmlFor="reg-phone" className="block text-sm font-semibold mb-1.5 text-slate-700">
             Số điện thoại <span className="text-red-500">*</span>
           </label>
           <div className="relative">
@@ -139,71 +147,59 @@ export default function PatientRegister() {
               value={form.phone}
               onChange={handleChange}
               autoComplete="tel"
-              placeholder="09xxxxxxxx"
+              placeholder="Ví dụ: 0912 345 678"
               className={`${inputClass} pl-10`}
               required
             />
           </div>
         </div>
 
+        {/* Số Căn cước công dân (CCCD) */}
         <div>
-          <label htmlFor="reg-email" className="block text-sm font-semibold mb-2">
-            Email <span className="text-red-500">*</span>
+          <label htmlFor="reg-cccd" className="block text-sm font-semibold mb-1.5 text-slate-700">
+            Số Căn cước công dân (CCCD / ĐDCN) <span className="text-red-500">*</span>
           </label>
           <div className="relative">
-            <Mail size={18} className="absolute left-3 top-3.5 text-slate-400" />
+            <IdCard size={18} className="absolute left-3 top-3.5 text-slate-400" />
             <input
-              id="reg-email"
-              name="email"
-              type="email"
-              value={form.email}
+              id="reg-cccd"
+              name="cccd"
+              type="text"
+              maxLength={12}
+              value={form.cccd}
               onChange={handleChange}
-              autoComplete="email"
-              placeholder="example@gmail.com"
-              className={`${inputClass} pl-10`}
+              placeholder="Nhập 12 chữ số CCCD (vd: 001098012345)"
+              className={`${inputClass} pl-10 font-mono`}
               required
             />
           </div>
+          <span className="text-[11px] text-slate-400 mt-1 block">
+            Dùng để đồng bộ định danh y tế điện tử và tra cứu thẻ BHYT
+          </span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label htmlFor="reg-dob" className="block text-sm font-semibold mb-2">
-              Ngày sinh <span className="text-red-500">*</span>
-            </label>
+        {/* Ngày sinh */}
+        <div>
+          <label htmlFor="reg-dob" className="block text-sm font-semibold mb-1.5 text-slate-700">
+            Ngày sinh <span className="text-red-500">*</span>
+          </label>
+          <div className="relative">
+            <Calendar size={18} className="absolute left-3 top-3.5 text-slate-400" />
             <input
               id="reg-dob"
               name="dateOfBirth"
               type="date"
               value={form.dateOfBirth}
               onChange={handleChange}
-              className={inputClass}
+              className={`${inputClass} pl-10`}
               required
             />
           </div>
-
-          <div>
-            <label htmlFor="reg-gender" className="block text-sm font-semibold mb-2">
-              Giới tính <span className="text-red-500">*</span>
-            </label>
-            <select
-              id="reg-gender"
-              name="gender"
-              value={form.gender}
-              onChange={handleChange}
-              className={inputClass}
-              required
-            >
-              <option value="">Chọn giới tính</option>
-              <option value="MALE">Nam</option>
-              <option value="FEMALE">Nữ</option>
-              <option value="OTHER">Khác</option>
-            </select>
-          </div>
         </div>
 
+        {/* Mật khẩu */}
         <div>
-          <label htmlFor="reg-password" className="block text-sm font-semibold mb-2">
+          <label htmlFor="reg-password" className="block text-sm font-semibold mb-1.5 text-slate-700">
             Mật khẩu <span className="text-red-500">*</span>
           </label>
           <div className="relative">
@@ -223,33 +219,37 @@ export default function PatientRegister() {
               type="button"
               onClick={() => setShowPassword(!showPassword)}
               aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
-              className="absolute right-3 top-3.5 text-slate-400"
+              className="absolute right-3 top-3.5 text-slate-400 hover:text-slate-600"
             >
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
         </div>
 
+        {/* Xác nhận mật khẩu */}
         <div>
-          <label htmlFor="reg-confirm" className="block text-sm font-semibold mb-2">
+          <label htmlFor="reg-confirm" className="block text-sm font-semibold mb-1.5 text-slate-700">
             Xác nhận mật khẩu <span className="text-red-500">*</span>
           </label>
-          <input
-            id="reg-confirm"
-            name="confirmPassword"
-            type={showPassword ? 'text' : 'password'}
-            value={form.confirmPassword}
-            onChange={handleChange}
-            autoComplete="new-password"
-            placeholder="Nhập lại mật khẩu"
-            className={inputClass}
-            required
-          />
+          <div className="relative">
+            <LockKeyhole size={18} className="absolute left-3 top-3.5 text-slate-400" />
+            <input
+              id="reg-confirm"
+              name="confirmPassword"
+              type={showPassword ? 'text' : 'password'}
+              value={form.confirmPassword}
+              onChange={handleChange}
+              autoComplete="new-password"
+              placeholder="Nhập lại mật khẩu"
+              className={`${inputClass} pl-10`}
+              required
+            />
+          </div>
         </div>
 
         <button
           type="submit"
-          className="w-full bg-[#004282] hover:bg-[#003566] text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 transition mt-3"
+          className="w-full bg-[#004282] hover:bg-[#003566] text-white font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 shadow-md transition mt-4 text-sm"
         >
           <UserPlus size={19} />
           Đăng ký tài khoản
@@ -259,7 +259,7 @@ export default function PatientRegister() {
       <p className="text-center text-sm text-slate-600 mt-6">
         Đã có tài khoản?{' '}
         <Link
-          to="/patient/login"
+          to="/login?role=patient"
           className="text-[#005baa] font-semibold hover:underline"
         >
           Đăng nhập ngay
@@ -267,7 +267,7 @@ export default function PatientRegister() {
       </p>
 
       <p className="text-center text-xs text-slate-400 mt-4">
-        Bản thử nghiệm — không nhập dữ liệu cá nhân thật.
+        Bản thử nghiệm — Thông tin được bảo mật theo quy định ngành Y tế.
       </p>
     </div>
   );

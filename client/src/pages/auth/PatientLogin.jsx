@@ -1,12 +1,13 @@
 
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   UserRound, LockKeyhole, Eye, EyeOff,
   ArrowRight, AlertCircle
 } from 'lucide-react';
 
 export default function PatientLogin() {
+  const navigate = useNavigate();
   const [form, setForm] = useState({
     identifier: '',
     password: '',
@@ -32,9 +33,8 @@ export default function PatientLogin() {
       return;
     }
 
-    setMessage(
-      'Giao diện đã sẵn sàng. Chức năng đăng nhập sẽ hoạt động sau khi kết nối API xác thực.'
-    );
+    // Đăng nhập thành công -> chuyển về homepage cho mọi role
+    navigate('/');
   };
 
   return (

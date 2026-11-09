@@ -5,6 +5,7 @@ import {
   FlaskConical, ArrowRight, HeartPulse,
   LayoutDashboard, Info
 } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
 
 const services = [
   {
@@ -53,6 +54,7 @@ const detailContent = {
 };
 
 export default function PatientHome() {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
 
   return (
@@ -108,13 +110,13 @@ export default function PatientHome() {
                   Chủ động đặt lịch, theo dõi quá trình khám chữa bệnh
                   và quản lý thông tin sức khỏe mọi lúc.
                 </p>
-                <button
-                  onClick={() => setActiveTab('booking')}
-                  className="mt-5 bg-white text-[#004282] px-5 py-2.5 rounded-lg font-semibold text-sm flex items-center gap-2 hover:bg-blue-50"
+                <Link
+                  to={user ? "/patient/booking" : "/login?role=patient&redirect=/patient/booking"}
+                  className="mt-5 bg-white text-[#004282] px-5 py-2.5 rounded-lg font-semibold text-sm inline-flex items-center gap-2 hover:bg-blue-50"
                 >
                   Đặt lịch khám
                   <ArrowRight size={17} />
-                </button>
+                </Link>
               </div>
             </div>
           </section>

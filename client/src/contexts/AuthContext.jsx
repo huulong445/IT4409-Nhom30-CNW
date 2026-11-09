@@ -8,18 +8,24 @@ export const AuthProvider = ({ children }) => {
     const saved = localStorage.getItem('bkh_user');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object') {
+          return parsed;
+        }
       } catch (e) {
-        return MOCK_USERS_LIST[0];
+        return null;
       }
     }
-    return MOCK_USERS_LIST[0]; // Mặc định khởi tạo Bác sĩ lâm sàng để test nhanh
+    return null; // Mặc định khách vãng lai chưa đăng nhập
   });
 
-  const login = (username, password) => {
-    const trimmedUser = username.trim().toLowerCase();
+  const login = (identifier, password) => {
+    const trimmed = identifier.trim().toLowerCase();
+    const cleanDigits = trimmed.replace(/\D/g, '');
     const found = MOCK_USERS_LIST.find(
-      u => u.username.toLowerCase() === trimmedUser
+      u => u.username.toLowerCase() === trimmed ||
+           (cleanDigits && u.phone && u.phone.replace(/\D/g, '') === cleanDigits) ||
+           (u.email && u.email.toLowerCase() === trimmed)
     );
 
     if (found && (found.password === password || password === '123' || !password)) {
@@ -27,7 +33,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('bkh_user', JSON.stringify(found));
       return { success: true, user: found };
     }
-    return { success: false, message: 'Tên đăng nhập hoặc mật khẩu không chính xác.' };
+    return { success: false, message: 'Tên đăng nhập, số điện thoại hoặc mật khẩu không chính xác.' };
   };
 
   const loginAs = (userObj) => {
