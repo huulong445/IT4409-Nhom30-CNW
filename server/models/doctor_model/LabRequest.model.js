@@ -4,7 +4,7 @@ const LabRequestModel = {
     create: async ({ record_id, patient_id, doctor_id, test_type }) => {
         const query = `
             INSERT INTO lab_requests (record_id, patient_id, doctor_id, test_type, status)
-            VALUES (?, ?, ?, ?, 'Pending')
+            VALUES (?, ?, ?, ?, 'REQUESTED')
         `;
         const [result] = await db.query(query, [record_id, patient_id, doctor_id, test_type]);
         return result;
