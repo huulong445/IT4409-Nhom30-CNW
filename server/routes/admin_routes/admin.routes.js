@@ -7,6 +7,7 @@ const medicineController = require("../../controllers/admin_controller/AdminMedi
 const router = express.Router();
 const departmentController = require("../../controllers/admin_controller/AdminDepartment.controller");
 const staffController = require("../../controllers/admin_controller/AdminStaff.controller");
+const scheduleController = require("../../controllers/admin_controller/AdminSchedule.controller");
 router.use(authenticate, requireRole(ROLES.ADMIN));
 
 //Quan ly nhan vien
@@ -15,6 +16,15 @@ router.get("/staff/:id", staffController.getStaffById);
 router.post("/staff", staffController.createStaff);
 router.put("/staff/:id", staffController.updateStaff);
 router.delete("/staff/:id", staffController.deleteStaff);
+
+// Quan ly lich lam viec
+router.get("/schedules", scheduleController.getAssignments);
+router.get("/schedules/shifts", scheduleController.getCatalog);
+router.get("/schedules/rooms", scheduleController.getCatalog);
+router.get("/schedules/:id", scheduleController.getAssignment);
+router.post("/schedules", scheduleController.createAssignment);
+router.put("/schedules/:id", scheduleController.updateAssignment);
+router.delete("/schedules/:id", scheduleController.deleteAssignment);
 
 //Quan ly phong ban
 router.get("/departments", departmentController.getAllDepartments);
