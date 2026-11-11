@@ -3,7 +3,7 @@ const controller = require("../../controllers/admin_controller/AdminUser.control
 const { authenticate } = require("../../middlewares/auth.middleware");
 const { requireRole } = require("../../middlewares/rbac.middleware");
 const { ROLES } = require("../../config/roles");
-const prescriptionController = require("../../controllers/admin_controller/AdminPrescription.controller");
+const medicineController = require("../../controllers/admin_controller/AdminMedicine.controller");
 const router = express.Router();
 const departmentController = require("../../controllers/admin_controller/AdminDepartment.controller");
 const staffController = require("../../controllers/admin_controller/AdminStaff.controller");
@@ -31,12 +31,12 @@ router.put("/users/:id", controller.updateUser);
 router.patch("/users/:id/status", controller.updateUserStatus);
 router.delete("/users/:id", controller.deleteUser);
 
-// Quản lý đơn thuốc
-router.get("/prescriptions", prescriptionController.getAllPrescriptions);
-router.get("/prescriptions/:id", prescriptionController.getPrescriptionById);
-router.post("/prescriptions", prescriptionController.createPrescription);
-router.put("/prescriptions/:id", prescriptionController.updatePrescription);
-router.delete("/prescriptions/:id", prescriptionController.deletePrescription);
+// Quản lý thuốc
+router.get("/medicines", medicineController.getAllMedicines);
+router.get("/medicines/:id", medicineController.getMedicineById);
+router.post("/medicines", medicineController.createMedicine);
+router.put("/medicines/:id", medicineController.updateMedicine);
+router.delete("/medicines/:id", medicineController.deleteMedicine);
 
 
 module.exports = router;
