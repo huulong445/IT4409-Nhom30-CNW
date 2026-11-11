@@ -1,6 +1,11 @@
 const express = require("express");
 const cors = require("cors");
+const path = require("path");
 require("dotenv").config();
+require("dotenv").config({
+  path: path.resolve(__dirname, "../.env"),
+});
+
 if (!process.env.JWT_SECRET) {
   throw new Error("Thiếu JWT_SECRET trong file .env");
 }
