@@ -1,5 +1,6 @@
 const bcrypt = require("bcryptjs");
 const userModel = require("../../models/admin_model/AdminUser.model");
+const staffModel = require("../../models/admin_model/AdminStaff.model");
 const { ALLOWED_ROLES } = require("../../config/roles");
 //const ALLOWED_ROLES = [
 //"PATIENT",
@@ -41,11 +42,11 @@ const createUserByAdmin = async (req, res) => {
       department_id,
     } = req.body;
 
-    if (!username || !password || !email || !full_name || !role) {
+    if (!username || !password || !email || !phone_number || !role) {
       return res.status(400).json({
         success: false,
         message:
-          "Vui lòng cung cấp đầy đủ thông tin: username, password, email, full_name, và role!",
+          "Vui lòng cung cấp đầy đủ thông tin: username, password, email, phone_number và role!",
       });
     }
 
@@ -95,10 +96,11 @@ const createUserByAdmin = async (req, res) => {
     // -------------------------------------------------------------------------
     // 2. KIỂM TRA TRÙNG LẶP DỮ LIỆU (DUPLICATE CHECK)
     // -------------------------------------------------------------------------
-    const existingUser = await userModel.findExistingUser(
-      username.trim(),
-      email.trim(),
-    );
+    const existingUser = await userModel.findExistingUser({
+      username: username.trim(),
+      email: email.trim().toLowerCase(),
+      phone: phone_number.trim(),
+    });
     if (existingUser) {
       return res.status(409).json({
         success: false,
@@ -109,13 +111,16 @@ const createUserByAdmin = async (req, res) => {
 
     const salt = await bcrypt.genSalt(10);
     const password_hash = await bcrypt.hash(password, salt);
+    const profileName =
+      typeof full_name === "string" && full_name.trim()
+        ? full_name.trim()
+        : username.trim();
 
     const newUserId = await userModel.createUser({
       username: username.trim(),
       password_hash,
       email: email.trim().toLowerCase(),
-      full_name: full_name.trim(),
-      phone_number: phone_number ? phone_number.trim() : null,
+      phone: phone_number.trim(),
       role: normalizedRole,
     });
 
@@ -123,10 +128,10 @@ const createUserByAdmin = async (req, res) => {
       ["DOCTOR", "RECEPTIONIST", "LAB_TECH"].includes(normalizedRole) &&
       department_id
     ) {
-      await userModel.createStaffProfile({
+      await staffModel.create({
         user_id: newUserId,
         department_id,
-        full_name: full_name.trim(),
+        full_name: profileName,
       });
     }
 
@@ -137,7 +142,7 @@ const createUserByAdmin = async (req, res) => {
         user_id: newUserId,
         username: username.trim(),
         email: email.trim().toLowerCase(),
-        full_name: full_name.trim(),
+        full_name: profileName,
         role: normalizedRole,
         department_id: department_id || null,
       },
