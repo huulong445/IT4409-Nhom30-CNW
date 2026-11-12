@@ -1,4 +1,3 @@
-
 const db = require("../../config/db.config");
 
 // 1. Lấy danh sách tài khoản
@@ -20,7 +19,7 @@ const getUserById = async (id) => {
             is_active, created_at, updated_at
      FROM users
      WHERE user_id = ?`,
-    [id]
+    [id],
   );
 
   return rows[0] || null;
@@ -39,25 +38,19 @@ const findExistingUser = async ({
      WHERE (username = ? OR email = ? OR phone = ?)
        AND (? IS NULL OR user_id <> ?)
      LIMIT 1`,
-    [username, email, phone, excludeUserId, excludeUserId]
+    [username, email, phone, excludeUserId, excludeUserId],
   );
 
   return rows[0] || null;
 };
 
 // 4. Tạo tài khoản
-const createUser = async ({
-  username,
-  passwordHash,
-  email,
-  phone,
-  role
-}) => {
+const createUser = async ({ username, password_hash, email, phone, role }) => {
   const [result] = await db.query(
     `INSERT INTO users
       (username, password_hash, email, phone, role)
      VALUES (?, ?, ?, ?, ?)`,
-    [username, passwordHash, email, phone, role]
+    [username, password_hash, email, phone, role],
   );
 
   return getUserById(result.insertId);
@@ -91,7 +84,7 @@ const updateUser = async (id, data) => {
   await db.query(
     `UPDATE users SET ${fields.join(", ")}
      WHERE user_id = ?`,
-    values
+    values,
   );
 
   return getUserById(id);
@@ -99,20 +92,17 @@ const updateUser = async (id, data) => {
 
 // 6. Khóa hoặc mở khóa tài khoản
 const updateUserStatus = async (id, isActive) => {
-  await db.query(
-    "UPDATE users SET is_active = ? WHERE user_id = ?",
-    [isActive, id]
-  );
+  await db.query("UPDATE users SET is_active = ? WHERE user_id = ?", [
+    isActive,
+    id,
+  ]);
 
   return getUserById(id);
 };
 
 // 7. Xóa tài khoản
 const deleteUser = async (id) => {
-  const [result] = await db.query(
-    "DELETE FROM users WHERE user_id = ?",
-    [id]
-  );
+  const [result] = await db.query("DELETE FROM users WHERE user_id = ?", [id]);
 
   return result.affectedRows > 0;
 };
@@ -124,5 +114,5 @@ module.exports = {
   createUser,
   updateUser,
   updateUserStatus,
-  deleteUser
+  deleteUser,
 };

@@ -1,12 +1,13 @@
 const mysql = require("mysql2/promise");
 require("dotenv").config();
-
+// dotenv tìm theo vị trí hiện tại của tiến trình node
+console.log(process.cwd()); // test
 const pool = mysql.createPool({
   host: process.env.DB_HOST || "localhost",
   user: process.env.DB_USER || "root",
   port: process.env.DB_PORT || 3306,
-  password: process.env.DB_PASSWORD || "",
-  database: process.env.DB_NAME || "hospital_db",
+  password: process.env.DB_PASSWORD || "Mysql123@...",
+  database: process.env.DB_NAME || "hospital",
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,

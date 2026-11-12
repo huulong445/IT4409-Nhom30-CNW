@@ -115,10 +115,10 @@ client/
 └── vite.config.js
 ```
 
-## NodeJS
+## BE
 
 ```
-cd root/
+cd root/server
 npm install
 
 # Chạy SV
@@ -129,11 +129,13 @@ npm run dev
 Server check
 
 ```
-http://localhost:5000/api/v1/health
+http://localhost:5000/api/v1/test
 ```
 
 ## Khởi tạo DB
-
+```
+cd database
+```
 1. Đăng nhập MySQL local
 
 ```
@@ -144,8 +146,14 @@ mysql -u root -p
 
 ```
 USE hospital_db;
-SOURCE schema.sql;
-SOURCE data.sql;
+SOURCE schema_new.sql;
+SOURCE data_new.sql;
+```
+
+2.5 Tạo JWT Secret Key
+
+```
+node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
 ```
 
 3. Tạo file `.env` tại root
@@ -157,4 +165,13 @@ DB_PORT=3306
 DB_USER=root
 DB_PASSWORD=ur_mysql_pass_here
 DB_NAME=hospital_db
+JWT_SECRET=jwt_secret_key_here
+```
+
+## FE
+
+```
+cd root/client
+npm install
+npm run dev
 ```
