@@ -6,7 +6,6 @@ import DashboardLayout from './layouts/DashboardLayout';
 import PatientRegister from './pages/auth/PatientRegister';
 import PatientBooking from './pages/patient/PatientBooking';
 import AuthLayout from './layouts/AuthLayout';
-import PatientLogin from './pages/auth/PatientLogin';
 
 // Patient pages
 import PatientLayout from './layouts/PatientLayout';
@@ -31,17 +30,18 @@ import AdminReports from './pages/admin/AdminReports';
 
 import NotFound from './pages/NotFound';
 import Login from './pages/auth/Login';
+import LandingPage from './pages/LandingPage';
 
 function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          {/* Trang Đăng nhập */}
-          <Route path="/login" element={<Login />} />
+          {/* Trang chủ Landing Page */}
+          <Route path="/" element={<LandingPage />} />
 
-          {/* Mặc định chuyển hướng vào giao diện Bác sĩ */}
-          <Route path="/" element={<Navigate to="/doctor" replace />} />
+          {/* Trang Đăng nhập cán bộ y tế */}
+          <Route path="/login" element={<Login />} />
 
           {/* Giao diện Bác sĩ Lâm sàng (Clinical Doctor Portal) */}
           <Route path="/doctor" element={<DashboardLayout />}>
@@ -72,10 +72,8 @@ function App() {
             <Route path="booking" element={<PatientBooking />} />
           </Route>
 
-          {/* Giao diện xác thực */}
-          <Route path="/patient/login" element={<AuthLayout />}>
-            <Route index element={<PatientLogin />} />
-          </Route>
+          {/* Giao diện xác thực tập trung: tự động chuyển về trang login thống nhất */}
+          <Route path="/patient/login" element={<Navigate to="/login?role=patient" replace />} />
 
           <Route path="/patient/register" element={<AuthLayout />}>
             <Route index element={<PatientRegister />} />

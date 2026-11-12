@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import api from '../../services/api';
 import { 
   Users, 
   Search, 
@@ -38,13 +39,55 @@ const UserManagement = () => {
     department: 'Khoa Khám bệnh'
   });
 
-  const toggleUserStatus = (id) => {
-    setUsers(users.map(u => u.id === id ? { ...u, isActive: !u.isActive } : u));
+  // Gọi API backend GET /admin/users khi tải trang
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const res = await api.get('/admin/users');
+        if (res.data?.success && Array.isArray(res.data?.data) && res.data.data.length > 0) {
+          setUsers(res.data.data.map(u => ({
+            id: u.id,
+            username: u.username,
+            fullName: u.full_name || u.fullName || u.username,
+            role: u.role,
+            email: u.email || `${u.username}@bkh.vn`,
+            phone: u.phone || '0900 000 000',
+            department: u.department || 'Khoa Khám bệnh',
+            isActive: u.is_active !== undefined ? Boolean(u.is_active) : true
+          })));
+        }
+      } catch (err) {
+        console.warn('Backend /admin/users call:', err.message);
+      }
+    };
+    fetchUsers();
+  }, []);
+
+  const toggleUserStatus = async (id) => {
+    const target = users.find(u => u.id === id);
+    const nextStatus = !target?.isActive;
+    try {
+      await api.patch(`/admin/users/${id}/status`, { is_active: nextStatus ? 1 : 0 });
+    } catch (err) {
+      console.warn('Lỗi patch /admin/users status:', err.message);
+    }
+    setUsers(users.map(u => u.id === id ? { ...u, isActive: nextStatus } : u));
   };
 
-  const handleCreateUser = (e) => {
+  const handleCreateUser = async (e) => {
     e.preventDefault();
     if (!newUser.username || !newUser.fullName) return;
+    try {
+      await api.post('/admin/users', {
+        username: newUser.username,
+        password: 'password123',
+        email: newUser.email || `${newUser.username}@bkh.vn`,
+        phone: newUser.phone || '0912 345 678',
+        role: newUser.role
+      });
+    } catch (err) {
+      console.warn('Lỗi post /admin/users:', err.message);
+    }
     setUsers([...users, { ...newUser, id: Date.now(), isActive: true }]);
     setShowAddModal(false);
     setNewUser({ username: '', fullName: '', role: 'DOCTOR', email: '', phone: '', department: 'Khoa Khám bệnh' });

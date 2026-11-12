@@ -1,9 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MOCK_COMMON_MEDICATIONS } from '../../services/mockData';
 import { Pill, Search, ShieldCheck, AlertCircle, FileText } from 'lucide-react';
+import api from '../../services/api';
 
 const DoctorPrescriptions = () => {
   const [searchTerm, setSearchTerm] = useState('');
+
+  useEffect(() => {
+    // Gọi API đơn thuốc mẫu từ backend
+    api.get('/doctor/prescriptions/1').catch(err => {
+      console.warn('Lỗi gọi API /doctor/prescriptions/1:', err.message);
+    });
+  }, []);
   
   const filteredMeds = MOCK_COMMON_MEDICATIONS.filter(m => 
     m.name.toLowerCase().includes(searchTerm.toLowerCase())

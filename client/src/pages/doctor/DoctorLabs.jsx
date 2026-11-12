@@ -1,11 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FlaskConical, Search, CheckCircle2, Clock, Eye, Download } from 'lucide-react';
 import { MOCK_QUEUE } from '../../services/mockData';
 import LabResultModal from '../../components/LabResultModal';
+import api from '../../services/api';
 
 const DoctorLabs = () => {
   const [selectedLab, setSelectedLab] = useState(null);
   const [patient, setPatient] = useState(MOCK_QUEUE[0]);
+  const [labs, setLabs] = useState([]);
+
+  useEffect(() => {
+    const fetchLabs = async () => {
+      try {
+        const res = await api.get('/doctor/lab-requests');
+        if (res.data?.success && Array.isArray(res.data.data) && res.data.data.length > 0) {
+          // map backend labs
+        }
+      } catch (err) {
+        console.warn('Lỗi gọi /doctor/lab-requests:', err.message);
+      }
+    };
+    fetchLabs();
+  }, []);
 
   const labList = [
     {

@@ -1,46 +1,74 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
+import api from '../../services/api';
 import { MOCK_QUEUE } from '../../services/mockData';
-import { Search } from 'lucide-react';
+import { 
+  Search, 
+  Users, 
+  Clock, 
+  AlertCircle, 
+  CheckCircle2, 
+  FlaskConical
+} from 'lucide-react';
 import LabResultModal from '../../components/LabResultModal';
 
 const DoctorQueue = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [queue, setQueue] = useState(MOCK_QUEUE);
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState('ALL_FLOWS'); // 'INITIAL', 'LAB_READY', 'WAITING_LAB', 'ALL_FLOWS'
+  const [statusFilter, setStatusFilter] = useState('ALL'); // 'ALL', 'WAITING', 'LAB_READY', 'WAITING_LAB', 'COMPLETED'
   const [selectedLabTest, setSelectedLabTest] = useState(null);
 
-  // 1. Hàng đợi khám lâm sàng ban đầu (Chưa làm CLS)
-  const initialPriorityQueue = queue.filter(
-    item => item.patientType === 'PRIORITY' && item.status !== 'LAB_READY' && item.status !== 'WAITING_LAB'
-  );
-  const initialWalkinQueue = queue.filter(
-    item => item.patientType === 'WALK_IN' && item.status !== 'LAB_READY' && item.status !== 'WAITING_LAB'
-  );
+  // GỌI API THẬT SANG BACKEND: Lấy danh sách hàng đợi khám của Bác sĩ
+  useEffect(() => {
+    const fetchDoctorAppointments = async () => {
+      try {
+        const doctorId = user?.id || 1;
+        const date = new Date().toISOString().slice(0, 10);
+        const res = await api.get(`/doctor/appointments?doctor_id=${doctorId}&date=${date}`);
+        if (res.data?.success && Array.isArray(res.data.data) && res.data.data.length > 0) {
+          const mapped = res.data.data.map((item, idx) => ({
+            appointmentId: item.appointment_id || item.id || idx + 1,
+            queueNumber: item.queue_number || String(idx + 1).padStart(2, '0'),
+            patientId: item.patient_code || item.patient_id || `BN-2024-${String(idx + 1).padStart(4, '0')}`,
+            fullName: item.full_name || item.patient_name || 'Bệnh nhân',
+            gender: item.gender === 'MALE' ? 'Nam' : item.gender === 'FEMALE' ? 'Nữ' : 'Khác',
+            age: item.age || 40,
+            phone: item.phone || '0912 345 678',
+            hasInsurance: item.has_insurance !== undefined ? Boolean(item.has_insurance) : true,
+            status: item.status || 'WAITING',
+            reason: item.reason || item.symptoms || 'Khám ban đầu',
+            allergies: item.allergies || 'Không có',
+            timeSlot: item.time_slot || null
+          }));
+          setQueue(mapped);
+        }
+      } catch (err) {
+        console.warn("Backend appointments API call:", err.message);
+        // Fallback sang mock queue nếu DB chưa có bản ghi
+      }
+    };
 
-  // 2. Hàng đợi ĐÃ CÓ ĐỦ KẾT QUẢ CLS (Chờ bác sĩ khám tổng kết & kê đơn)
-  const labReadyQueue = queue.filter(item => item.status === 'LAB_READY');
-
-  // 3. Danh sách Đang thực hiện CLS (Đang chờ phòng xét nghiệm / CĐHA trả kết quả)
-  const waitingLabQueue = queue.filter(item => item.status === 'WAITING_LAB');
+    fetchDoctorAppointments();
+  }, [user]);
 
   // Thống kê số lượng theo quy trình khám
   const stats = {
-    total: queue.length + 18,
-    waitingInitial: initialPriorityQueue.filter(q => q.status === 'WAITING').length + 
-                    initialWalkinQueue.filter(q => q.status === 'WAITING').length,
-    waitingLab: waitingLabQueue.length,
-    labReady: labReadyQueue.length,
+    total: queue.length,
+    waiting: queue.filter(q => q.status === 'WAITING').length,
     inProgress: queue.filter(q => q.status === 'IN_PROGRESS').length,
-    completed: queue.filter(q => q.status === 'COMPLETED').length + 10
+    labReady: queue.filter(q => q.status === 'LAB_READY').length,
+    waitingLab: queue.filter(q => q.status === 'WAITING_LAB').length,
+    completed: queue.filter(q => q.status === 'COMPLETED').length,
   };
 
   const handleStartExam = (patient, isConclusion = false) => {
     const updated = queue.map(p => 
       p.appointmentId === patient.appointmentId 
         ? { ...p, status: 'IN_PROGRESS' } 
-        : (p.status === 'IN_PROGRESS' ? { ...p, status: p.status === 'IN_PROGRESS' ? 'WAITING' : p.status } : p)
+        : (p.status === 'IN_PROGRESS' ? { ...p, status: 'WAITING' } : p)
     );
     setQueue(updated);
     navigate('/doctor/exam', { 
@@ -64,391 +92,169 @@ const DoctorQueue = () => {
     setQueue(updated);
   };
 
-  const filterList = (list) => {
-    return list.filter(item => {
-      const term = searchTerm.toLowerCase();
-      return (
-        item.fullName.toLowerCase().includes(term) ||
-        item.patientId.toLowerCase().includes(term) ||
-        item.queueNumber.toLowerCase().includes(term) ||
-        item.phone.includes(term)
-      );
-    });
-  };
+  // Bộ lọc dữ liệu tìm kiếm và trạng thái
+  const filteredQueue = queue.filter(item => {
+    // 1. Lọc theo trạng thái tab
+    if (statusFilter === 'WAITING' && item.status !== 'WAITING' && item.status !== 'IN_PROGRESS') {
+      return false;
+    }
+    if (statusFilter === 'LAB_READY' && item.status !== 'LAB_READY') {
+      return false;
+    }
+    if (statusFilter === 'WAITING_LAB' && item.status !== 'WAITING_LAB') {
+      return false;
+    }
+    if (statusFilter === 'COMPLETED' && item.status !== 'COMPLETED') {
+      return false;
+    }
+
+    // 2. Lọc theo từ khóa tìm kiếm
+    const term = searchTerm.toLowerCase().trim();
+    if (!term) return true;
+
+    return (
+      item.fullName.toLowerCase().includes(term) ||
+      item.patientId.toLowerCase().includes(term) ||
+      item.queueNumber.toLowerCase().includes(term) ||
+      item.phone.includes(term) ||
+      (item.reason && item.reason.toLowerCase().includes(term))
+    );
+  });
 
   const getStatusBadge = (status) => {
     switch (status) {
       case 'IN_PROGRESS':
-        return <span className="px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">Đang khám</span>;
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800 border border-blue-200 animate-pulse">
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
+            Đang khám
+          </span>
+        );
       case 'WAITING':
-        return <span className="px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">Chờ khám</span>;
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+            Chờ khám
+          </span>
+        );
       case 'WAITING_LAB':
-        return <span className="px-2 py-0.5 rounded text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200">Đang làm CLS</span>;
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-200">
+            <FlaskConical className="w-3 h-3" />
+            Đang làm CLS
+          </span>
+        );
       case 'LAB_READY':
-        return <span className="px-2 py-0.5 rounded text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">Đã đủ KQ CLS</span>;
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+            Đã đủ KQ CLS
+          </span>
+        );
       case 'NO_SHOW':
-        return <span className="px-2 py-0.5 rounded text-xs font-medium bg-red-50 text-red-700 border border-red-200">Vắng mặt</span>;
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-red-50 text-red-700 border border-red-200">
+            Vắng mặt
+          </span>
+        );
       case 'COMPLETED':
-        return <span className="px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">Đã kết luận</span>;
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+            Đã kết luận
+          </span>
+        );
       default:
         return null;
     }
   };
 
-  // Render bảng hàng đợi khám ban đầu
-  const renderInitialQueueTable = (items, title, subTitle, showTimeSlot = true) => {
-    const filtered = filterList(items);
-
-    return (
-      <div className="bg-white rounded-lg border border-slate-200 overflow-hidden flex flex-col">
-        {/* Header bảng */}
-        <div className="p-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-          <div>
-            <h3 className="font-semibold text-slate-800 text-sm">
-              {title}
-              <span className="ml-2 px-2 py-0.5 rounded text-xs font-medium bg-slate-200 text-slate-700">
-                {items.filter(i => i.status !== 'COMPLETED').length} bệnh nhân
-              </span>
-            </h3>
-            <p className="text-xs text-slate-500 mt-0.5">{subTitle}</p>
-          </div>
-          <div className="text-xs text-slate-500">
-            {items.filter(i => i.status === 'WAITING').length} đang chờ
-          </div>
-        </div>
-
-        {/* Bảng dữ liệu */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-600">
-            <thead className="bg-slate-50 text-slate-700 uppercase font-semibold border-b text-[11px]">
-              <tr>
-                <th className="py-2.5 px-3 w-16 text-center">STT</th>
-                <th className="py-2.5 px-3">Bệnh nhân</th>
-                {showTimeSlot && <th className="py-2.5 px-3">Khung giờ hẹn</th>}
-                <th className="py-2.5 px-3">Lý do khám</th>
-                <th className="py-2.5 px-3">BHYT</th>
-                <th className="py-2.5 px-3 text-center">Trạng thái</th>
-                <th className="py-2.5 px-3 text-right">Thao tác</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={showTimeSlot ? 7 : 6} className="py-6 text-center text-slate-400">
-                    Không có bệnh nhân trong danh sách này.
-                  </td>
-                </tr>
-              ) : (
-                filtered.map((item) => (
-                  <tr 
-                    key={item.appointmentId} 
-                    className={`hover:bg-slate-50 transition-colors ${
-                      item.status === 'IN_PROGRESS' ? 'bg-blue-50/40' : item.status === 'NO_SHOW' ? 'opacity-60 bg-slate-50' : ''
-                    }`}
-                  >
-                    <td className="py-3 px-3 text-center">
-                      <span className="font-semibold text-slate-800">
-                        {item.queueNumber}
-                      </span>
-                    </td>
-
-                    <td className="py-3 px-3">
-                      <div className="font-semibold text-slate-900 text-xs">
-                        {item.fullName}
-                        <span className="font-normal text-slate-500 ml-1">
-                          ({item.gender}, {item.age}t)
-                        </span>
-                      </div>
-                      <div className="text-[11px] text-slate-500 mt-0.5 font-mono">
-                        {item.patientId} • {item.phone}
-                      </div>
-                      {item.allergies && item.allergies !== 'Không có' && (
-                        <div className="text-[11px] text-red-600 font-medium mt-0.5">
-                          Lưu ý: {item.allergies}
-                        </div>
-                      )}
-                    </td>
-
-                    {showTimeSlot && (
-                      <td className="py-3 px-3">
-                        <div className="text-slate-800 font-medium">
-                          {item.timeSlot}
-                        </div>
-                        <div className="text-[11px] text-slate-500 mt-0.5">
-                          {item.priorityReason}
-                        </div>
-                      </td>
-                    )}
-
-                    <td className="py-3 px-3 max-w-xs">
-                      <p className="text-slate-700 line-clamp-2" title={item.reason}>
-                        {item.reason}
-                      </p>
-                    </td>
-
-                    <td className="py-3 px-3">
-                      {item.hasInsurance ? (
-                        <span className="text-slate-700">Có BHYT</span>
-                      ) : (
-                        <span className="text-slate-400">Tự túc</span>
-                      )}
-                    </td>
-
-                    <td className="py-3 px-3 text-center whitespace-nowrap">
-                      {getStatusBadge(item.status)}
-                    </td>
-
-                    <td className="py-3 px-3 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => handleToggleNoShow(item.appointmentId)}
-                          className={`px-2 py-1 rounded text-xs transition ${
-                            item.status === 'NO_SHOW'
-                              ? 'text-slate-700 bg-slate-100 border border-slate-300 hover:bg-slate-200'
-                              : 'text-slate-500 border border-slate-200 hover:text-red-600'
-                          }`}
-                        >
-                          {item.status === 'NO_SHOW' ? 'Phục hồi' : 'Vắng mặt'}
-                        </button>
-
-                        <button
-                          onClick={() => handleStartExam(item)}
-                          className="px-3 py-1 bg-[#004282] hover:bg-[#002f5e] text-white rounded text-xs font-medium transition"
-                        >
-                          {item.status === 'IN_PROGRESS' ? 'Tiếp tục' : 'Khám'}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    );
-  };
-
-  // Render bảng bệnh nhân ĐÃ CÓ ĐỦ KẾT QUẢ CLS (Chờ khám tổng kết)
-  const renderLabReadyTable = () => {
-    const filtered = filterList(labReadyQueue);
-
-    return (
-      <div className="bg-white rounded-lg border border-slate-200 overflow-hidden flex flex-col">
-        <div className="p-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-          <div>
-            <h3 className="font-semibold text-slate-800 text-sm">
-              Danh Sách Đã Có Đầy Đủ Kết Quả Cận Lâm Sàng (Chờ Khám Tổng Kết)
-              <span className="ml-2 px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800">
-                {labReadyQueue.length} bệnh nhân sẵn sàng kết luận
-              </span>
-            </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Bệnh nhân đã làm xong toàn bộ xét nghiệm & chẩn đoán hình ảnh, quay lại buồng khám để bác sĩ kết luận và kê đơn
-            </p>
-          </div>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-600">
-            <thead className="bg-slate-50 text-slate-700 uppercase font-semibold border-b text-[11px]">
-              <tr>
-                <th className="py-2.5 px-3 w-16 text-center">STT</th>
-                <th className="py-2.5 px-3">Bệnh nhân</th>
-                <th className="py-2.5 px-3">Kết quả CLS đã hoàn thành</th>
-                <th className="py-2.5 px-3">Thời gian nhận đủ KQ</th>
-                <th className="py-2.5 px-3">BHYT</th>
-                <th className="py-2.5 px-3 text-center">Trạng thái</th>
-                <th className="py-2.5 px-3 text-right">Thao tác</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filtered.length === 0 ? (
-                <tr>
-                  <td colSpan="7" className="py-6 text-center text-slate-400">
-                    Hiện chưa có bệnh nhân nào đang chờ kết luận kết quả CLS.
-                  </td>
-                </tr>
-              ) : (
-                filtered.map((item) => (
-                  <tr key={item.appointmentId} className="hover:bg-slate-50 transition-colors">
-                    <td className="py-3 px-3 text-center">
-                      <span className="font-semibold text-slate-800">{item.queueNumber}</span>
-                    </td>
-                    <td className="py-3 px-3">
-                      <div className="font-semibold text-slate-900 text-xs">
-                        {item.fullName}
-                        <span className="font-normal text-slate-500 ml-1">({item.gender}, {item.age}t)</span>
-                      </div>
-                      <div className="text-[11px] text-slate-500 mt-0.5 font-mono">{item.patientId} • {item.phone}</div>
-                      {item.allergies && item.allergies !== 'Không có' && (
-                        <div className="text-[11px] text-red-600 font-medium mt-0.5">Lưu ý: {item.allergies}</div>
-                      )}
-                    </td>
-                    <td className="py-3 px-3">
-                      <div className="text-slate-800 font-medium">
-                        {item.labProgress?.summary || 'Đã có đầy đủ kết quả xét nghiệm'}
-                      </div>
-                      <div className="text-[11px] text-slate-500 mt-0.5">
-                        Chẩn đoán sơ bộ: {item.reason}
-                      </div>
-                    </td>
-                    <td className="py-3 px-3">
-                      <span className="text-slate-700 font-mono">{item.labProgress?.completedAt || '09:15'}</span>
-                    </td>
-                    <td className="py-3 px-3">
-                      {item.hasInsurance ? <span className="text-slate-700">Có BHYT</span> : <span className="text-slate-400">Tự túc</span>}
-                    </td>
-                    <td className="py-3 px-3 text-center whitespace-nowrap">
-                      {getStatusBadge(item.status)}
-                    </td>
-                    <td className="py-3 px-3 text-right">
-                      <button
-                        onClick={() => handleStartExam(item, true)}
-                        className="px-3 py-1.5 bg-[#004282] hover:bg-[#002f5e] text-white rounded text-xs font-semibold shadow-sm transition"
-                      >
-                        Khám tổng kết & Kê đơn
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    );
-  };
-
-  // Render bảng bệnh nhân ĐANG LÀM CLS (Chờ phòng xét nghiệm trả kết quả)
-  const renderWaitingLabTable = () => {
-    const filtered = filterList(waitingLabQueue);
-
-    return (
-      <div className="bg-white rounded-lg border border-slate-200 overflow-hidden flex flex-col">
-        <div className="p-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-          <div>
-            <h3 className="font-semibold text-slate-800 text-sm">
-              Danh Sách Đang Thực Hiện Cận Lâm Sàng (Theo Dõi Tiến Độ Phòng Xét Nghiệm)
-              <span className="ml-2 px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
-                {waitingLabQueue.length} bệnh nhân đang làm CLS
-              </span>
-            </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Theo dõi tiến độ trả kết quả từ Trung tâm Xét nghiệm & Khoa Chẩn đoán hình ảnh
-            </p>
-          </div>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-600">
-            <thead className="bg-slate-50 text-slate-700 uppercase font-semibold border-b text-[11px]">
-              <tr>
-                <th className="py-2.5 px-3 w-16 text-center">STT</th>
-                <th className="py-2.5 px-3">Bệnh nhân</th>
-                <th className="py-2.5 px-3">Tiến độ thực hiện dịch vụ</th>
-                <th className="py-2.5 px-3">Thời gian chỉ định</th>
-                <th className="py-2.5 px-3">BHYT</th>
-                <th className="py-2.5 px-3 text-center">Trạng thái</th>
-                <th className="py-2.5 px-3 text-right">Ghi chú</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filtered.length === 0 ? (
-                <tr>
-                  <td colSpan="7" className="py-6 text-center text-slate-400">
-                    Hiện không có bệnh nhân nào đang thực hiện xét nghiệm.
-                  </td>
-                </tr>
-              ) : (
-                filtered.map((item) => (
-                  <tr key={item.appointmentId} className="hover:bg-slate-50 transition-colors">
-                    <td className="py-3 px-3 text-center">
-                      <span className="font-semibold text-slate-800">{item.queueNumber}</span>
-                    </td>
-                    <td className="py-3 px-3">
-                      <div className="font-semibold text-slate-900 text-xs">
-                        {item.fullName}
-                        <span className="font-normal text-slate-500 ml-1">({item.gender}, {item.age}t)</span>
-                      </div>
-                      <div className="text-[11px] text-slate-500 mt-0.5 font-mono">{item.patientId} • {item.phone}</div>
-                    </td>
-                    <td className="py-3 px-3">
-                      <div className="text-slate-800 font-medium">
-                        {item.labProgress?.summary || 'Đang thực hiện các chỉ định CLS'}
-                      </div>
-                    </td>
-                    <td className="py-3 px-3">
-                      <span className="text-slate-700 font-mono">{item.labProgress?.orderedAt || item.checkinTime}</span>
-                    </td>
-                    <td className="py-3 px-3">
-                      {item.hasInsurance ? <span className="text-slate-700">Có BHYT</span> : <span className="text-slate-400">Tự túc</span>}
-                    </td>
-                    <td className="py-3 px-3 text-center whitespace-nowrap">
-                      {getStatusBadge(item.status)}
-                    </td>
-                    <td className="py-3 px-3 text-right">
-                      <span className="text-xs text-purple-700 bg-purple-50 px-2 py-1 rounded border border-purple-200">
-                        Chờ trả kết quả
-                      </span>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div className="space-y-4">
       {/* Tiêu đề trang */}
-      <div>
-        <h2 className="text-xl font-bold text-slate-800">
-          Hàng Đợi Khám Bệnh
-        </h2>
-        <p className="text-xs text-slate-500 mt-0.5">
-          Phòng 204 • PGS.TS.BS Nguyễn Văn Trung • Thứ Ba, 20/10/2026
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div>
+          <h2 className="text-xl font-bold text-slate-800">
+            Hàng Đợi Khám Bệnh
+          </h2>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Phòng 204 • PGS.TS.BS Nguyễn Văn Trung • Thứ Ba, 20/10/2026
+          </p>
+        </div>
+        <div className="text-xs text-slate-500 bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm flex items-center gap-2">
+          <Clock className="w-3.5 h-3.5 text-blue-600" />
+          <span>Thời gian tiếp nhận: <strong>07:30 - 17:00</strong></span>
+        </div>
       </div>
 
-      {/* Thống kê đơn giản theo quy trình khám */}
+      {/* Thống kê tiến độ hàng đợi */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        <div className="bg-white p-3 rounded-lg border border-slate-200">
-          <div className="text-xs text-slate-500">Tổng đăng ký</div>
-          <div className="text-xl font-bold text-slate-800 mt-1">{stats.total}</div>
+        <div 
+          onClick={() => setStatusFilter('ALL')}
+          className={`p-3 rounded-xl border cursor-pointer transition ${
+            statusFilter === 'ALL' 
+              ? 'bg-blue-50/60 border-[#004282] shadow-sm' 
+              : 'bg-white border-slate-200 hover:border-slate-300'
+          }`}
+        >
+          <div className="text-xs text-slate-500">Tổng bệnh nhân</div>
+          <div className="text-xl font-black text-slate-800 mt-1">{stats.total}</div>
         </div>
 
-        <div className="bg-white p-3 rounded-lg border border-slate-200">
-          <div className="text-xs text-slate-500">Chờ khám ban đầu</div>
-          <div className="text-xl font-bold text-slate-800 mt-1">{stats.waitingInitial}</div>
+        <div 
+          onClick={() => setStatusFilter('WAITING')}
+          className={`p-3 rounded-xl border cursor-pointer transition ${
+            statusFilter === 'WAITING' 
+              ? 'bg-amber-50/60 border-amber-500 shadow-sm' 
+              : 'bg-white border-slate-200 hover:border-slate-300'
+          }`}
+        >
+          <div className="text-xs text-amber-700 font-medium">Chờ khám ban đầu</div>
+          <div className="text-xl font-black text-amber-800 mt-1">{stats.waiting}</div>
         </div>
 
-        <div className="bg-white p-3 rounded-lg border border-purple-200 bg-purple-50/20">
-          <div className="text-xs text-purple-700 font-medium">Đang làm CLS</div>
-          <div className="text-xl font-bold text-purple-800 mt-1">{stats.waitingLab}</div>
+        <div className="bg-white p-3 rounded-xl border border-blue-200">
+          <div className="text-xs text-blue-700 font-medium">Đang trong phòng khám</div>
+          <div className="text-xl font-black text-blue-800 mt-1">{stats.inProgress}</div>
         </div>
 
-        <div className="bg-white p-3 rounded-lg border border-emerald-300 bg-emerald-50/30">
+        <div 
+          onClick={() => setStatusFilter('LAB_READY')}
+          className={`p-3 rounded-xl border cursor-pointer transition ${
+            statusFilter === 'LAB_READY' 
+              ? 'bg-emerald-50/80 border-emerald-500 shadow-sm' 
+              : 'bg-white border-emerald-200 hover:border-emerald-400'
+          }`}
+        >
           <div className="text-xs text-emerald-700 font-bold">Đã có đủ KQ CLS</div>
           <div className="text-xl font-black text-emerald-800 mt-1">{stats.labReady}</div>
         </div>
 
-        <div className="bg-white p-3 rounded-lg border border-slate-200">
-          <div className="text-xs text-slate-500">Đang khám</div>
-          <div className="text-xl font-bold text-slate-800 mt-1">{stats.inProgress}</div>
+        <div 
+          onClick={() => setStatusFilter('WAITING_LAB')}
+          className={`p-3 rounded-xl border cursor-pointer transition ${
+            statusFilter === 'WAITING_LAB' 
+              ? 'bg-purple-50/80 border-purple-500 shadow-sm' 
+              : 'bg-white border-purple-200 hover:border-purple-300'
+          }`}
+        >
+          <div className="text-xs text-purple-700 font-medium">Đang làm CLS</div>
+          <div className="text-xl font-black text-purple-800 mt-1">{stats.waitingLab}</div>
         </div>
 
-        <div className="bg-white p-3 rounded-lg border border-slate-200">
-          <div className="text-xs text-slate-500">Đã kết luận xong</div>
-          <div className="text-xl font-bold text-slate-800 mt-1">{stats.completed}</div>
+        <div 
+          onClick={() => setStatusFilter('COMPLETED')}
+          className={`p-3 rounded-xl border cursor-pointer transition ${
+            statusFilter === 'COMPLETED' 
+              ? 'bg-slate-100 border-slate-400 shadow-sm' 
+              : 'bg-white border-slate-200 hover:border-slate-300'
+          }`}
+        >
+          <div className="text-xs text-slate-500">Đã kết luận</div>
+          <div className="text-xl font-black text-slate-700 mt-1">{stats.completed}</div>
         </div>
       </div>
 
-      {/* Thanh tìm kiếm & chọn hiển thị luồng */}
-      <div className="bg-white p-3 rounded-lg border border-slate-200 flex flex-col md:flex-row items-center justify-between gap-3">
+      {/* Thanh công cụ tìm kiếm và lọc trạng thái */}
+      <div className="bg-white p-3 rounded-xl border border-slate-200 flex flex-col md:flex-row items-center justify-between gap-3 shadow-sm">
         <div className="relative w-full md:w-80">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
@@ -456,97 +262,236 @@ const DoctorQueue = () => {
             placeholder="Tìm theo Tên, Mã BN, SĐT, STT..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#004282]"
+            className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-[#004282] font-medium"
           />
         </div>
 
-        {/* Bộ nút chuyển đổi luồng khám đơn giản */}
-        <div className="flex items-center gap-1 p-1 bg-slate-100 rounded text-xs w-full md:w-auto flex-wrap">
-          <button
-            onClick={() => setActiveTab('ALL_FLOWS')}
-            className={`px-3 py-1 rounded font-medium transition ${
-              activeTab === 'ALL_FLOWS' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            Tất cả theo dõi ({queue.length})
-          </button>
-
-          <button
-            onClick={() => setActiveTab('LAB_READY')}
-            className={`px-3 py-1 rounded font-medium transition ${
-              activeTab === 'LAB_READY' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            Đã đủ KQ CLS - Chờ kết luận ({labReadyQueue.length})
-          </button>
-
-          <button
-            onClick={() => setActiveTab('INITIAL')}
-            className={`px-3 py-1 rounded font-medium transition ${
-              activeTab === 'INITIAL' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            Khám ban đầu (2 danh sách)
-          </button>
-
-          <button
-            onClick={() => setActiveTab('WAITING_LAB')}
-            className={`px-3 py-1 rounded font-medium transition ${
-              activeTab === 'WAITING_LAB' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            Đang làm CLS ({waitingLabQueue.length})
-          </button>
+        {/* Nút lọc nhanh theo tab duy nhất */}
+        <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-lg text-xs w-full md:w-auto overflow-x-auto">
+          {[
+            { id: 'ALL', label: `Tất cả (${stats.total})` },
+            { id: 'WAITING', label: `Chờ khám (${stats.waiting + stats.inProgress})` },
+            { id: 'LAB_READY', label: `Đủ KQ CLS (${stats.labReady})` },
+            { id: 'WAITING_LAB', label: `Đang làm CLS (${stats.waitingLab})` },
+            { id: 'COMPLETED', label: `Đã xong (${stats.completed})` }
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setStatusFilter(tab.id)}
+              className={`px-3 py-1.5 rounded-md font-semibold whitespace-nowrap transition ${
+                statusFilter === tab.id
+                  ? 'bg-white text-[#004282] shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Hiển thị danh sách theo luồng quy trình */}
-      {activeTab === 'ALL_FLOWS' ? (
-        <div className="space-y-4">
-          {/* 1. Ưu tiên hàng đầu: Danh sách bệnh nhân đã có đầy đủ KQ CLS chờ bác sĩ kết luận */}
-          {labReadyQueue.length > 0 && renderLabReadyTable()}
-
-          {/* 2. Hai danh sách chờ khám ban đầu (Ưu tiên & Tự do) */}
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-            {renderInitialQueueTable(
-              initialPriorityQueue,
-              "1. Hàng đợi Ưu tiên & Đặt trước (Khám ban đầu)",
-              "Bệnh nhân đặt qua ứng dụng, khám dịch vụ, người cao tuổi",
-              true
-            )}
-
-            {renderInitialQueueTable(
-              initialWalkinQueue,
-              "2. Hàng đợi Bệnh nhân tự do (Khám ban đầu)",
-              "Bệnh nhân lấy số tại Kiosk sảnh và quầy tiếp đón",
-              false
-            )}
+      {/* BẢNG 1 HÀNG ĐỢI DUY NHẤT */}
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm flex flex-col">
+        {/* Header bảng */}
+        <div className="p-3.5 bg-slate-50/80 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Users className="w-4 h-4 text-[#004282]" />
+            <h3 className="font-bold text-slate-800 text-sm">
+              Danh Sách Bệnh Nhân Tiếp Nhận Phòng Khám 204
+            </h3>
+            <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-[#004282]">
+              {filteredQueue.length} bệnh nhân
+            </span>
           </div>
 
-          {/* 3. Danh sách bệnh nhân đang làm CLS */}
-          {waitingLabQueue.length > 0 && renderWaitingLabTable()}
+          <div className="text-xs text-slate-500 flex items-center gap-3">
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
+              {stats.inProgress} đang khám
+            </span>
+            <span>•</span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+              {stats.waiting} chờ lượt
+            </span>
+          </div>
         </div>
-      ) : activeTab === 'LAB_READY' ? (
-        renderLabReadyTable()
-      ) : activeTab === 'INITIAL' ? (
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          {renderInitialQueueTable(
-            initialPriorityQueue,
-            "1. Hàng đợi Ưu tiên & Đặt trước (Khám ban đầu)",
-            "Bệnh nhân đặt qua ứng dụng, khám dịch vụ, người cao tuổi",
-            true
-          )}
 
-          {renderInitialQueueTable(
-            initialWalkinQueue,
-            "2. Hàng đợi Bệnh nhân tự do (Khám ban đầu)",
-            "Bệnh nhân lấy số tại Kiosk sảnh và quầy tiếp đón",
-            false
-          )}
+        {/* Bảng dữ liệu duy nhất */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs text-slate-600">
+            <thead className="bg-slate-50 text-slate-700 uppercase font-semibold border-b text-[11px] tracking-wider">
+              <tr>
+                <th className="py-3 px-3.5 w-16 text-center">STT</th>
+                <th className="py-3 px-3.5 min-w-[200px]">Bệnh nhân</th>
+                <th className="py-3 px-3.5 min-w-[150px]">Khung giờ hẹn</th>
+                <th className="py-3 px-3.5 min-w-[220px]">Lý do khám / Tiến độ CLS</th>
+                <th className="py-3 px-3.5 w-24">BHYT</th>
+                <th className="py-3 px-3.5 text-center w-32">Trạng thái</th>
+                <th className="py-3 px-3.5 text-right w-36">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {filteredQueue.length === 0 ? (
+                <tr>
+                  <td colSpan="7" className="py-12 text-center text-slate-400">
+                    <Users className="w-10 h-10 mx-auto text-slate-300 mb-2" />
+                    Không tìm thấy bệnh nhân nào trong hàng đợi phù hợp.
+                  </td>
+                </tr>
+              ) : (
+                filteredQueue.map((item) => {
+                  const isLabReady = item.status === 'LAB_READY';
+                  const isInProgress = item.status === 'IN_PROGRESS';
+                  const isWaitingLab = item.status === 'WAITING_LAB';
+
+                  return (
+                    <tr 
+                      key={item.appointmentId} 
+                      className={`hover:bg-blue-50/30 transition-colors ${
+                        isInProgress ? 'bg-blue-50/60 font-medium' : isLabReady ? 'bg-emerald-50/30' : item.status === 'NO_SHOW' ? 'opacity-60 bg-slate-50' : ''
+                      }`}
+                    >
+                      {/* Cột 1: Số thứ tự (STT thuần túy, không gắn nhãn ưu tiên/tự do) */}
+                      <td className="py-3 px-3.5 text-center">
+                        <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-slate-100 font-extrabold text-sm text-[#004282] border border-slate-200">
+                          {item.queueNumber}
+                        </span>
+                      </td>
+
+                      {/* Cột 2: Thông tin Bệnh nhân */}
+                      <td className="py-3 px-3.5">
+                        <div className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+                          {item.fullName}
+                          <span className="font-normal text-slate-500">
+                            ({item.gender}, {item.age}t)
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-slate-500 mt-0.5 font-mono">
+                          {item.patientId} • {item.phone}
+                        </div>
+                        {item.allergies && item.allergies !== 'Không có' && item.allergies !== 'Không rõ' && (
+                          <div className="text-[11px] text-red-600 font-semibold mt-0.5 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3 shrink-0" />
+                            <span>Dị ứng: {item.allergies}</span>
+                          </div>
+                        )}
+                      </td>
+
+                      {/* Cột 3: Khung giờ hẹn */}
+                      <td className="py-3 px-3.5">
+                        {item.timeSlot && (
+                          <div className="text-slate-800 font-semibold flex items-center gap-1.5">
+                            <Clock className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                            <span>{item.timeSlot}</span>
+                          </div>
+                        )}
+                        {!item.timeSlot && !isLabReady && (
+                          <span className="text-slate-300 font-mono">—</span>
+                        )}
+                        {isLabReady && (
+                          <div className={`text-[11px] text-emerald-700 font-bold ${item.timeSlot ? 'mt-1' : ''}`}>
+                            ✓ Đã có đủ KQ CLS
+                          </div>
+                        )}
+                      </td>
+
+                      {/* Cột 4: Lý do khám / Tiến độ xét nghiệm */}
+                      <td className="py-3 px-3.5 max-w-xs">
+                        {isLabReady ? (
+                          <div>
+                            <div className="text-emerald-800 font-semibold">
+                              {item.labProgress?.summary || 'Đã có đầy đủ kết quả xét nghiệm'}
+                            </div>
+                            <div className="text-[11px] text-slate-500 mt-0.5 line-clamp-1">
+                              Lý do: {item.reason}
+                            </div>
+                          </div>
+                        ) : isWaitingLab ? (
+                          <div>
+                            <div className="text-purple-700 font-semibold flex items-center gap-1">
+                              <FlaskConical className="w-3 h-3" />
+                              {item.labProgress?.summary || 'Đang thực hiện xét nghiệm/chụp chiếu'}
+                            </div>
+                            <div className="text-[11px] text-slate-400 mt-0.5">
+                              Chờ Trung tâm Xét nghiệm trả kết quả
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-slate-700 line-clamp-2" title={item.reason}>
+                            {item.reason}
+                          </p>
+                        )}
+                      </td>
+
+                      {/* Cột 5: BHYT */}
+                      <td className="py-3 px-3.5">
+                        {item.hasInsurance ? (
+                          <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded text-[11px] font-semibold border border-emerald-200">
+                            Có BHYT
+                          </span>
+                        ) : (
+                          <span className="text-slate-500 bg-slate-100 px-2 py-0.5 rounded text-[11px]">
+                            Tự túc
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Cột 6: Trạng thái */}
+                      <td className="py-3 px-3.5 text-center whitespace-nowrap">
+                        {getStatusBadge(item.status)}
+                      </td>
+
+                      {/* Cột 7: Thao tác */}
+                      <td className="py-3 px-3.5 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-1.5">
+                          {/* Nút đánh dấu vắng mặt */}
+                          {item.status !== 'COMPLETED' && (
+                            <button
+                              onClick={() => handleToggleNoShow(item.appointmentId)}
+                              className={`px-2 py-1 rounded text-xs transition ${
+                                item.status === 'NO_SHOW'
+                                  ? 'text-slate-700 bg-slate-100 border border-slate-300 hover:bg-slate-200'
+                                  : 'text-slate-500 border border-slate-200 hover:text-red-600 hover:border-red-200'
+                              }`}
+                              title={item.status === 'NO_SHOW' ? 'Phục hồi lượt khám' : 'Báo vắng mặt'}
+                            >
+                              {item.status === 'NO_SHOW' ? 'Phục hồi' : 'Vắng'}
+                            </button>
+                          )}
+
+                          {/* Nút hành động chính */}
+                          {isLabReady ? (
+                            <button
+                              onClick={() => handleStartExam(item, true)}
+                              className="px-3 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold shadow-sm transition"
+                            >
+                              Khám kết luận
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleStartExam(item)}
+                              className={`px-3 py-1 rounded-lg text-xs font-semibold shadow-sm transition ${
+                                isInProgress
+                                  ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                                  : item.status === 'COMPLETED'
+                                  ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
+                                  : 'bg-[#004282] hover:bg-[#002f5e] text-white'
+                              }`}
+                            >
+                              {isInProgress ? 'Tiếp tục' : item.status === 'COMPLETED' ? 'Xem lại' : 'Khám'}
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
         </div>
-      ) : (
-        renderWaitingLabTable()
-      )}
+      </div>
 
       {/* Modal xem thông số kết quả CLS (nếu cần xem nhanh) */}
       {selectedLabTest && (

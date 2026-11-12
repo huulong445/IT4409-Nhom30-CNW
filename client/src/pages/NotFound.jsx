@@ -11,10 +11,10 @@ const NotFound = () => {
       <h1 className="text-4xl font-black text-slate-800">404</h1>
       <p className="text-slate-600 mt-2 font-medium">Trang không tìm thấy hoặc bạn không có quyền truy cập.</p>
       <Link 
-        to="/doctor" 
+        to="/" 
         className="mt-6 inline-flex items-center gap-2 px-5 py-2.5 bg-[#004282] text-white rounded-xl text-sm font-semibold shadow hover:bg-[#002f5e] transition"
       >
-        <ArrowLeft className="w-4 h-4" /> Quay lại trang Bác sĩ
+        <ArrowLeft className="w-4 h-4" /> Quay lại Trang chủ
       </Link>
     </div>
   );
