@@ -8,7 +8,10 @@ const prescriptionController = require("../controllers/doctor_controller/Prescri
 const doctorController = require("../controllers/doctor_controller/WaitingPatients.controller");
 
 // Middleware xác thực
-const { authenticate } = require("../middleware/auth.middleware");
+const { authenticate } = require("../middlewares/auth.middleware");
+const { authorization } = require("../middlewares/rbac.middleware");
+const { ROLES } = require("../config/roles");
+router.use(authenticate, authorization(ROLES.DOCTOR));
 
 // ==========================================
 // 1. ROUTES CHO LAB REQUESTS (Cận lâm sàng)

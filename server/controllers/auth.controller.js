@@ -152,4 +152,19 @@ const register = async (req, res) => {
     });
   }
 };
-module.exports = { login, register };
+
+const logout = async (req, res) => {
+  try {
+    return res.status(200).json({
+      success: true,
+      message: "Đăng xuất thành công",
+    });
+  } catch (error) {
+    console.error("Lỗi đăng xuất", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Lỗi server khi đăng xuất",
+    });
+  }
+};
+module.exports = { login, register, logout };

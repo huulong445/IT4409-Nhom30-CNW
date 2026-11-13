@@ -124,18 +124,39 @@ export const AuthProvider = ({ children }) => {
     return { success: true, user: userObj };
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem("bkh_user");
-    localStorage.removeItem("token");
+  const logout = async () => {
+    let result = { success: true };
+
+    try {
+      const response = await api.post("/auth/logout");
+      if (!response.data?.success) {
+        result = {
+          success: false,
+          message: response.data?.message || "Đăng xuất không thành công.",
+        };
+      }
+    } catch (error) {
+      console.error(
+        "Backend logout API call:",
+        error.response?.data || error.message,
+      );
+      result = {
+        success: false,
+        message:
+          error.response?.data?.message ||
+          "Không thể kết nối để đăng xuất khỏi hệ thống.",
+      };
+    } finally {
+      setUser(null);
+      localStorage.removeItem("bkh_user");
+      localStorage.removeItem("token");
+    }
+
+    return result;
   };
 
   const switchRole = (role) => {
-    const found = MOCK_USERS_LIST.find((u) => u.role === role);
-    if (found) {
-      setUser(found);
-      localStorage.setItem("bkh_user", JSON.stringify(found));
-    }
+    return Boolean(user && user.role === role);
   };
 
   return (

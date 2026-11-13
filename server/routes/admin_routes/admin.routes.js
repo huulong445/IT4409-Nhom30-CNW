@@ -1,13 +1,13 @@
 const express = require("express");
 const controller = require("../../controllers/admin_controller/AdminUser.controller");
 const { authenticate } = require("../../middlewares/auth.middleware");
-const { requireRole } = require("../../middlewares/rbac.middleware");
+const { authorization } = require("../../middlewares/rbac.middleware");
 const { ROLES } = require("../../config/roles");
 
 const router = express.Router();
 const departmentController = require("../../controllers/admin_controller/AdminDepartment.controller");
 const staffController = require("../../controllers/admin_controller/AdminStaff.controller");
-router.use(authenticate, requireRole(ROLES.ADMIN));
+router.use(authenticate, authorization(ROLES.ADMIN));
 
 //Quan ly nhan vien
 router.get("/staff", staffController.getAllStaff);

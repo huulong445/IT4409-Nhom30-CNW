@@ -13,6 +13,13 @@ import { MOCK_USERS_LIST, MOCK_DEPARTMENTS } from '../services/mockData';
 export default function LandingPage() {
   const { user, logout } = useAuth();
 
+  const handleLogout = async () => {
+    const result = await logout();
+    if (!result.success) {
+      window.alert(result.message);
+    }
+  };
+
   // FAQ accordion state
   const [openFaq, setOpenFaq] = useState(0);
 
@@ -96,7 +103,7 @@ export default function LandingPage() {
                   Cổng Bệnh Nhân &rarr;
                 </Link>
                 <button
-                  onClick={logout}
+                  onClick={handleLogout}
                   className="text-red-300 hover:text-white text-[11px] transition flex items-center gap-1 ml-1 px-1.5 py-0.5 rounded hover:bg-red-500/20"
                   title="Đăng xuất khỏi hệ thống"
                 >

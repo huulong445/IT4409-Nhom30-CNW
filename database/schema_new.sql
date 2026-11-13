@@ -62,7 +62,7 @@ CREATE TABLE departments (
 -- -----------------------------------------------------------------------------
 CREATE TABLE patients (
     patient_id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT UNIQUE NULL, -- Có thể NULL nếu bệnh nhân vãng lai chưa tạo tài khoản app
+    user_id INT NULL, -- Có thể NULL nếu bệnh nhân vãng lai chưa tạo tài khoản app
     full_name VARCHAR(100) NOT NULL,
     dob DATE NOT NULL,
     gender ENUM('MALE', 'FEMALE', 'OTHER') NOT NULL,
@@ -71,8 +71,9 @@ CREATE TABLE patients (
     insurance_number VARCHAR(20) UNIQUE, -- Số BHYT
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     
-    CONSTRAINT fk_patients_user FOREIGN KEY (user_id) 
-        REFERENCES users(user_id) ON DELETE SET NULL ON UPDATE CASCADE
+    CONSTRAINT fk_patients_user
+      FOREIGN KEY (user_id) REFERENCES users(user_id)
+      ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------------------------------

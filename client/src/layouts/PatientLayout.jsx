@@ -1,21 +1,34 @@
-
-import { Outlet, Link } from 'react-router-dom';
+import { Outlet, Link } from "react-router-dom";
 import {
-  HeartPulse, Phone, MapPin,
-  LogIn, UserPlus, LogOut
-} from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
+  HeartPulse,
+  Phone,
+  MapPin,
+  LogIn,
+  UserPlus,
+  LogOut,
+} from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
 
 export default function PatientLayout() {
   const { user, logout } = useAuth();
+
+  const handleLogout = async () => {
+    const result = await logout();
+    if (!result.success) {
+      window.alert(result.message);
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-800">
-
       <header className="bg-[#004282] text-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 py-4 flex flex-wrap items-center justify-between gap-4">
-
           {/* Logo và tên bệnh viện - Về trang chủ */}
-          <Link to="/" className="flex items-center gap-3 group" title="Về Trang chủ Bệnh viện">
+          <Link
+            to="/"
+            className="flex items-center gap-3 group"
+            title="Về Trang chủ Bệnh viện"
+          >
             <div className="bg-white/15 rounded-xl p-2 group-hover:scale-105 transition-transform">
               <HeartPulse size={28} />
             </div>
@@ -48,15 +61,19 @@ export default function PatientLayout() {
                     className="w-7 h-7 rounded-full object-cover border border-white/40"
                   />
                   <div className="text-left hidden sm:block">
-                    <div className="text-xs font-bold text-white leading-tight">{user.fullName}</div>
+                    <div className="text-xs font-bold text-white leading-tight">
+                      {user.fullName}
+                    </div>
                     <div className="text-[10px] text-blue-200">
-                      {user.role === 'PATIENT' ? (user.patientId || 'Bệnh nhân') : (user.specialty || user.role)}
+                      {user.role === "PATIENT"
+                        ? user.patientId || "Bệnh nhân"
+                        : user.specialty || user.role}
                     </div>
                   </div>
                 </div>
 
                 <button
-                  onClick={logout}
+                  onClick={handleLogout}
                   className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-600/80 hover:bg-red-600 text-white text-xs font-semibold transition"
                   title="Đăng xuất"
                 >
@@ -93,9 +110,7 @@ export default function PatientLayout() {
 
       <footer className="bg-white border-t border-slate-200">
         <div className="max-w-7xl mx-auto px-4 py-6 text-sm text-slate-500 flex flex-col md:flex-row justify-between gap-3">
-          <span>
-            © 2026 - Hệ thống quản lý khám chữa bệnh
-          </span>
+          <span>© 2026 - Hệ thống quản lý khám chữa bệnh</span>
 
           <div className="flex flex-wrap gap-4">
             <span className="flex items-center gap-1">

@@ -12,11 +12,13 @@ app.use(express.json());
 // Import Routes
 const authRoutes = require("./routes/auth.routes");
 const userRoutes = require("./routes/user.routes");
+const patientRoutes = require("./routes/patient.routes");
 const doctorRoutes = require("./routes/doctor.routes");
 const adminRoutes = require("./routes/admin_routes/admin.routes");
 // Mount Routes
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/users", userRoutes);
+app.use("/api/v1/patients", patientRoutes);
 app.use("/api/v1/admin", adminRoutes);
 app.use("/api/v1/doctor", doctorRoutes);
 

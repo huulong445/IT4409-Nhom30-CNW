@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Outlet, useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import Header from '../components/Header';
@@ -7,21 +7,28 @@ import Footer from '../components/Footer';
 
 const DashboardLayout = () => {
   const location = useLocation();
-  const { user, switchRole } = useAuth();
-
-  useEffect(() => {
-    if (!user) return;
-    if (location.pathname.startsWith('/admin') && user.role !== 'ADMIN') {
-      switchRole('ADMIN');
-    } else if (location.pathname.startsWith('/paraclinical') && user.role !== 'PARACLINICAL') {
-      switchRole('PARACLINICAL');
-    } else if (location.pathname.startsWith('/doctor') && user.role !== 'DOCTOR') {
-      switchRole('DOCTOR');
-    }
-  }, [location.pathname, user, switchRole]);
+  const { user } = useAuth();
 
   if (!user) {
     return <Navigate to="/login" replace state={{ from: location }} />;
+  }
+
+  const routeRoles = {
+    admin: 'ADMIN',
+    doctor: 'DOCTOR',
+    paraclinical: 'PARACLINICAL',
+  };
+  const roleHomes = {
+    ADMIN: '/admin',
+    DOCTOR: '/doctor',
+    PARACLINICAL: '/paraclinical',
+    PATIENT: '/patient',
+  };
+  const routeRole = routeRoles[location.pathname.split('/')[1]];
+  const userRole = String(user.role || '').toUpperCase();
+
+  if (!routeRole || userRole !== routeRole) {
+    return <Navigate to={roleHomes[userRole] || '/'} replace />;
   }
 
   return (
