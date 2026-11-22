@@ -8,6 +8,8 @@ const router = express.Router();
 const departmentController = require("../../controllers/admin_controller/AdminDepartment.controller");
 const staffController = require("../../controllers/admin_controller/AdminStaff.controller");
 const scheduleController = require("../../controllers/admin_controller/AdminSchedule.controller");
+const statisticsController = require( "../../controllers/admin_controller/AdminStatistics.controller");
+
 router.use(authenticate, requireRole(ROLES.ADMIN));
 
 //Quan ly nhan vien
@@ -48,5 +50,9 @@ router.post("/medicines", medicineController.createMedicine);
 router.put("/medicines/:id", medicineController.updateMedicine);
 router.delete("/medicines/:id", medicineController.deleteMedicine);
 
-
+// ADMIN STATISTICS
+router.get("/statistics/overview", statisticsController.getOverview);// Tổng quan thống kê
+router.get("/statistics/doctors", statisticsController.getDoctorStatistics);// Số lượt khám theo bác sĩ
+router.get("/statistics/staff", statisticsController.getStaffStatistics);// Thống kê nhân viên
+router.get("/statistics/low-stock", statisticsController.getLowStock);// Thuốc dưới ngưỡng tồn kho
 module.exports = router;
