@@ -1,16 +1,12 @@
 const express = require("express");
-const router = express.Router();
 const userController = require("../controllers/user.controller");
+const { authenticate } = require("../middlewares/auth.middleware");
 
-// GET /api/v1/users
-const { verifyToken } = require("../middleware/auth.middleware");
-// test
-console.log(typeof verifyToken);
-console.log(typeof userController.getAllUsers);
-console.log(typeof userController.getUserById);
-console.log(typeof userController.login);
+const router = express.Router();
+router.use(authenticate);
 
-router.get("/", verifyToken, userController.getAllUsers);
-router.get("/user/:id", verifyToken, userController.getUserById);
-router.post("/login", userController.login);
+router.get("/profile", userController.getOwnProfile);
+router.put("/profile", userController.updateOwnProfile);
+router.delete("/profile", userController.deactivateOwnAccount);
+
 module.exports = router;

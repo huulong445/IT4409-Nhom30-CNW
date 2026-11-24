@@ -1,177 +1,155 @@
-import React, { useState } from 'react';
-import { FlaskConical, Search, CheckCircle2, Clock, Eye, Download } from 'lucide-react';
-import { MOCK_QUEUE } from '../../services/mockData';
-import LabResultModal from '../../components/LabResultModal';
+import { useState } from "react";
+import { FlaskConical, Search, RefreshCw, Pencil, Trash2, Save, X } from "lucide-react";
+import api from "../../services/api";
 
-const DoctorLabs = () => {
-  const [selectedLab, setSelectedLab] = useState(null);
-  const [patient, setPatient] = useState(MOCK_QUEUE[0]);
-
-  const labList = [
-    {
-      id: 1,
-      patientName: "Nguyễn Thị Mai Lan",
-      patientId: "BN-2024-0089",
-      gender: "Nữ",
-      age: 48,
-      dob: "1978-05-14",
-      phone: "0912 345 678",
-      insuranceNumber: "DN4010123894712",
-      address: "Số 15 phố Chùa Bộc, Đống Đa, Hà Nội",
-      testName: "Tổng phân tích tế bào máu ngoại vi (24 thông số)",
-      code: "XN-HH-01",
-      sampleTime: "07:50 - 20/10/2026",
-      status: "COMPLETED",
-      statusText: "Đã có kết quả"
-    },
-    {
-      id: 2,
-      patientName: "Nguyễn Thị Mai Lan",
-      patientId: "BN-2024-0089",
-      gender: "Nữ",
-      age: 48,
-      dob: "1978-05-14",
-      phone: "0912 345 678",
-      insuranceNumber: "DN4010123894712",
-      address: "Số 15 phố Chùa Bộc, Đống Đa, Hà Nội",
-      testName: "Điện tâm đồ thông thường (ECG 12 chuyển đạo)",
-      code: "CDHA-ECG",
-      sampleTime: "07:55 - 20/10/2026",
-      status: "COMPLETED",
-      statusText: "Đã có kết quả: Nhịp xoang 78ck/p"
-    },
-    {
-      id: 3,
-      patientName: "Trần Đình Trọng",
-      patientId: "BN-2024-0102",
-      gender: "Nam",
-      age: 62,
-      dob: "1964-11-20",
-      phone: "0983 112 233",
-      insuranceNumber: "HT3010992837119",
-      address: "Cầu Giấy, Hà Nội",
-      testName: "Bộ mỡ máu toàn phần (Lipid profile)",
-      code: "XN-SH-03",
-      sampleTime: "08:25 - 20/10/2026",
-      status: "COMPLETED",
-      statusText: "Đã có kết quả: Rối loạn lipid máu"
-    },
-    {
-      id: 4,
-      patientName: "Lê Hoàng Phúc",
-      patientId: "BN-2024-0145",
-      gender: "Nam",
-      age: 29,
-      dob: "1997-03-08",
-      phone: "0904 889 900",
-      insuranceNumber: "",
-      address: "Hai Bà Trưng, Hà Nội",
-      testName: "Siêu âm Doppler Tim qua thành ngực",
-      code: "CDHA-SATM",
-      sampleTime: "08:40 - 20/10/2026",
-      status: "COMPLETED",
-      statusText: "Đã có kết quả: EF 64%"
-    },
-    {
-      id: 5,
-      patientName: "Vũ Thị Hương",
-      patientId: "BN-2024-0158",
-      gender: "Nữ",
-      age: 71,
-      dob: "1955-08-25",
-      phone: "0977 445 566",
-      insuranceNumber: "GD4010582910482",
-      address: "Thanh Xuân, Hà Nội",
-      testName: "Chụp X-quang ngực thẳng kỹ thuật số (CR/DR)",
-      code: "CDHA-XQN",
-      sampleTime: "09:05 - 20/10/2026",
-      status: "COMPLETED",
-      statusText: "Đã có kết quả: Bình thường"
-    }
-  ];
-
-  const handleOpenSlip = (item) => {
-    setSelectedLab({
-      id: item.id,
-      name: item.testName,
-      code: item.code
-    });
-    setPatient({
-      fullName: item.patientName,
-      patientId: item.patientId,
-      gender: item.gender,
-      age: item.age,
-      dob: item.dob,
-      address: item.address,
-      insuranceNumber: item.insuranceNumber
-    });
-  };
-
-  return (
-    <div className="space-y-6 max-w-7xl mx-auto">
-      <div>
-        <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-          <FlaskConical className="w-7 h-7 text-purple-600" />
-          Quản Lý Kết Quả Cận Lâm Sàng & Xét Nghiệm
-        </h2>
-        <p className="text-sm text-slate-500 mt-1">
-          Theo dõi tiến độ trả kết quả & tra cứu phiếu thông số chi tiết từng ca khám
-        </p>
-      </div>
-
-      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
-        <table className="w-full text-left text-sm text-slate-600">
-          <thead className="bg-[#f8fafc] text-slate-700 text-xs uppercase font-semibold border-b">
-            <tr>
-              <th className="py-3 px-4">Mã BN / Bệnh nhân</th>
-              <th className="py-3 px-4">Chỉ định kỹ thuật</th>
-              <th className="py-3 px-4">Thời gian lấy mẫu</th>
-              <th className="py-3 px-4 text-center">Trạng thái kết quả</th>
-              <th className="py-3 px-4 text-right">Thao tác</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {labList.map((item) => (
-              <tr key={item.id} className="hover:bg-slate-50 transition">
-                <td className="py-3.5 px-4 font-semibold text-slate-900">
-                  {item.patientName}
-                  <div className="text-xs text-slate-400 font-normal">
-                    {item.gender} • {item.age} tuổi • <span className="font-mono">{item.patientId}</span>
-                  </div>
-                </td>
-                <td className="py-3.5 px-4 text-xs">
-                  <span className="font-semibold text-slate-800 block">{item.testName}</span>
-                  <span className="text-slate-400 font-mono">{item.code}</span>
-                </td>
-                <td className="py-3.5 px-4 text-xs text-slate-500">{item.sampleTime}</td>
-                <td className="py-3.5 px-4 text-center">
-                  <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> {item.statusText}
-                  </span>
-                </td>
-                <td className="py-3.5 px-4 text-right">
-                  <button 
-                    onClick={() => handleOpenSlip(item)}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#004282] hover:bg-[#002f5e] text-white text-xs font-semibold shadow-sm transition active:scale-95"
-                  >
-                    <Eye className="w-3.5 h-3.5" /> Xem phiếu thông số
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Modal phiếu kết quả thông số */}
-      <LabResultModal
-        isOpen={Boolean(selectedLab)}
-        onClose={() => setSelectedLab(null)}
-        labTest={selectedLab}
-        patient={patient}
-      />
-    </div>
-  );
+const STATUS_NAMES = {
+  REQUESTED: "Đã chỉ định", PROCESSING: "Đang thực hiện",
+  COMPLETED: "Đã hoàn thành chỉ định", CANCELLED: "Đã hủy",
+};
+const STATUS_STYLES = {
+  REQUESTED: "bg-amber-50 text-amber-800", PROCESSING: "bg-blue-50 text-blue-800",
+  COMPLETED: "bg-emerald-50 text-emerald-800", CANCELLED: "bg-slate-100 text-slate-600",
+};
+const formatDate = value => value ? new Date(value).toLocaleString("vi-VN") : "—";
+const validId = value => /^[1-9]\d*$/.test(String(value)) && Number.isSafeInteger(Number(value));
+const errorMessage = err => {
+  if ([401, 403].includes(err.response?.status)) return "Cần đăng nhập bằng tài khoản bác sĩ thật có quyền truy cập API.";
+  if (!err.response || [502, 503].includes(err.response.status)) return "Chưa kết nối được backend hoặc database.";
+  return err.response?.data?.message || err.message || "Thao tác thất bại.";
 };
 
-export default DoctorLabs;
+export default function DoctorLabs() {
+  const [patientId, setPatientId] = useState("");
+  const [searchedId, setSearchedId] = useState("");
+  const [labs, setLabs] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [busyId, setBusyId] = useState(null);
+  const [editing, setEditing] = useState(null);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+
+  const fetchLabs = async (value) => {
+    const id = String(value).trim();
+    if (!validId(id)) {
+      setError("Vui lòng nhập patient_id là số nguyên dương hợp lệ.");
+      setLabs([]);
+      setSearchedId("");
+      return;
+    }
+    setLoading(true);
+    setError(""); setNotice(""); setSearchedId(""); setLabs([]); setEditing(null);
+    try {
+      const res = await api.get("/doctor/lab-requests", { params: { patient_id: id } });
+      if (!res.data?.success || !Array.isArray(res.data.data)) {
+        throw new Error(res.data?.message || "Phản hồi API không hợp lệ.");
+      }
+      setLabs(res.data.data);
+      setSearchedId(id);
+    } catch (err) { setError(errorMessage(err)); }
+    finally { setLoading(false); }
+  };
+
+  const beginEdit = lab => {
+    setError(""); setNotice("");
+    setEditing({ id: String(lab.lab_request_id), test_type: lab.test_type || "", status: lab.status || "REQUESTED" });
+  };
+
+  const saveEdit = async event => {
+    event.preventDefault();
+    if (!editing || busyId || !searchedId) return;
+    const item = labs.find(lab => String(lab.lab_request_id) === editing.id);
+    if (!item || !validId(editing.id) || item.status !== "REQUESTED" || !editing.test_type.trim()) {
+      setError("Chỉ sửa được yêu cầu đang ở trạng thái Đã chỉ định và có tên xét nghiệm hợp lệ.");
+      return;
+    }
+    if (editing.test_type.trim().length > 100) {
+      setError("Tên xét nghiệm tối đa 100 ký tự theo database."); return;
+    }
+    setBusyId(editing.id); setError(""); setNotice("");
+    try {
+      // Backend PUT expects both fields and overwrites both; retain original status.
+      const res = await api.put(`/doctor/lab-requests/${editing.id}`, {
+        test_type: editing.test_type.trim(), status: "REQUESTED",
+      });
+      if (!res.data?.success) throw new Error(res.data?.message || "Backend không xác nhận cập nhật.");
+      setEditing(null);
+      setNotice(`Đã cập nhật chỉ định #${editing.id}.`);
+      // Reload the authoritative list; never rely only on an optimistic mutation.
+      const fresh = await api.get("/doctor/lab-requests", { params: { patient_id: searchedId } });
+      if (!fresh.data?.success || !Array.isArray(fresh.data.data)) throw new Error("Đã lưu nhưng không tải lại được danh sách.");
+      setLabs(fresh.data.data);
+    } catch (err) {
+      setError(errorMessage(err) + " Hãy tra cứu lại trước khi thao tác tiếp.");
+      setSearchedId(""); setLabs([]);
+    } finally { setBusyId(null); }
+  };
+
+  const deleteLab = async lab => {
+    const id = String(lab.lab_request_id);
+    if (!validId(id) || !searchedId || busyId || lab.status !== "REQUESTED") return;
+    const confirmation = window.prompt(
+      `Xóa chỉ định #${id}? Chỉ thực hiện với yêu cầu chưa xử lý. Nhập ${id} để xác nhận:`
+    );
+    if (confirmation !== id) return;
+    setBusyId(id); setError(""); setNotice("");
+    try {
+      const res = await api.delete(`/doctor/lab-requests/${id}`);
+      if (!res.data?.success) throw new Error(res.data?.message || "Backend không xác nhận xóa.");
+      setNotice(`Đã xóa chỉ định #${id}.`);
+      const fresh = await api.get("/doctor/lab-requests", { params: { patient_id: searchedId } });
+      if (!fresh.data?.success || !Array.isArray(fresh.data.data)) throw new Error("Đã xóa nhưng không tải lại được danh sách.");
+      setLabs(fresh.data.data);
+    } catch (err) {
+      setError(errorMessage(err) + " Hãy tra cứu lại để biết trạng thái thực tế.");
+      setSearchedId(""); setLabs([]);
+    } finally { setBusyId(null); }
+  };
+
+  return <div className="mx-auto max-w-7xl space-y-6">
+    <div>
+      <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-800"><FlaskConical className="text-purple-600" /> Quản lý chỉ định cận lâm sàng</h1>
+      <p className="mt-1 text-sm text-slate-500">Tra cứu, chỉnh sửa và xóa chỉ định chưa thực hiện. Dữ liệu từ backend, không có kết quả xét nghiệm giả.</p>
+    </div>
+    <form onSubmit={e => { e.preventDefault(); if (!loading && !busyId) fetchLabs(patientId); }} className="flex flex-col gap-3 rounded-xl border bg-white p-4 sm:flex-row sm:items-end">
+      <label className="flex-1 space-y-1 text-sm font-semibold text-slate-700">Mã bệnh nhân (patient_id)
+        <input value={patientId} disabled={loading || Boolean(busyId)} onChange={e => setPatientId(e.target.value)} inputMode="numeric" placeholder="Ví dụ: 12" className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal" />
+      </label>
+      <button type="submit" disabled={loading || Boolean(busyId)} className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#004282] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+        {loading ? <RefreshCw size={16} className="animate-spin" /> : <Search size={16} />} {loading ? "Đang tra cứu..." : "Tra cứu / Tải lại"}
+      </button>
+    </form>
+    <p className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">API này trả <strong>chỉ định</strong>, không trả phiếu kết quả. Chỉ định đã chuyển sang PROCESSING/COMPLETED/CANCELLED được giữ nguyên; không cho sửa hoặc xóa từ giao diện này.</p>
+    {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</p>}
+    {notice && !error && <p role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{notice}</p>}
+    <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+      <table className="w-full min-w-[780px] text-left text-sm">
+        <thead className="border-b bg-slate-50 text-slate-700"><tr><th className="px-4 py-3">Mã chỉ định</th><th className="px-4 py-3">Bệnh án</th><th className="px-4 py-3">Xét nghiệm</th><th className="px-4 py-3">Ngày tạo</th><th className="px-4 py-3">Trạng thái</th><th className="px-4 py-3">Thao tác</th></tr></thead>
+        <tbody className="divide-y divide-slate-100">
+          {labs.map(lab => <tr key={lab.lab_request_id}>
+            <td className="px-4 py-3 font-mono">{lab.lab_request_id}</td><td className="px-4 py-3 font-mono">{lab.record_id}</td>
+            <td className="px-4 py-3">{lab.test_type || "—"}</td><td className="px-4 py-3">{formatDate(lab.created_at)}</td>
+            <td className="px-4 py-3"><span className={`rounded-full px-2 py-1 text-xs ${STATUS_STYLES[lab.status] || "bg-slate-100"}`}>{STATUS_NAMES[lab.status] || lab.status || "Không rõ"}</span></td>
+            <td className="space-x-2 px-4 py-3">
+              {lab.status === "REQUESTED" && <>
+                <button type="button" disabled={Boolean(busyId)} onClick={() => beginEdit(lab)} className="inline-flex items-center gap-1 rounded border px-2 py-1 text-blue-700 disabled:opacity-40"><Pencil size={13} /> Sửa</button>
+                <button type="button" disabled={Boolean(busyId)} onClick={() => deleteLab(lab)} className="inline-flex items-center gap-1 rounded border px-2 py-1 text-red-700 disabled:opacity-40"><Trash2 size={13} /> Xóa</button>
+              </>}
+              {lab.status !== "REQUESTED" && <span className="text-xs text-slate-400">Chỉ xem</span>}
+            </td>
+          </tr>)}
+          {!loading && labs.length === 0 && <tr><td colSpan={6} className="px-4 py-10 text-center text-slate-500">{error ? "Không tải được dữ liệu." : searchedId ? `Không có chỉ định cho bệnh nhân #${searchedId}.` : "Nhập mã bệnh nhân để tra cứu."}</td></tr>}
+          {loading && <tr><td colSpan={6} className="px-4 py-10 text-center text-slate-500">Đang tải dữ liệu...</td></tr>}
+        </tbody>
+      </table>
+    </div>
+    {editing && <form onSubmit={saveEdit} className="space-y-4 rounded-xl border border-blue-200 bg-white p-5">
+      <h2 className="text-base font-bold">Chỉnh sửa chỉ định #{editing.id}</h2>
+      <label className="block text-sm font-semibold">Loại xét nghiệm
+        <input value={editing.test_type} onChange={e => setEditing(p => ({ ...p, test_type: e.target.value }))} maxLength={100} required disabled={Boolean(busyId)} className="mt-1 w-full rounded-lg border border-slate-300 p-2" />
+      </label>
+      <p className="text-xs text-slate-500">Giữ trạng thái REQUESTED. Backend không hỗ trợ chỉnh sửa kết quả xét nghiệm tại đây.</p>
+      <div className="flex gap-2"><button disabled={Boolean(busyId)} className="inline-flex items-center gap-2 rounded bg-[#004282] px-4 py-2 text-sm text-white"><Save size={16}/> Lưu thay đổi</button>
+        <button type="button" disabled={Boolean(busyId)} onClick={() => setEditing(null)} className="inline-flex items-center gap-2 rounded border px-4 py-2 text-sm"><X size={16}/> Hủy</button></div>
+    </form>}
+  </div>;
+}

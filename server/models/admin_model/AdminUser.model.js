@@ -1,4 +1,3 @@
-
 const db = require("../../config/db.config");
 
 // 1. Lấy danh sách tài khoản
@@ -16,42 +15,43 @@ const getAllUsers = async () => {
 // 2. Lấy tài khoản theo ID
 const getUserById = async (id) => {
   const [rows] = await db.query(
-    `SELECT user_id, username, email, phone, role,
-            is_active, created_at, updated_at
-     FROM users
-     WHERE user_id = ?`,
-    [id]
+    `SELECT u.user_id, u.username, u.email, u.phone, u.role,
+            u.is_active, u.created_at, u.updated_at, s.staff_id
+     FROM users u
+     LEFT JOIN staff s ON s.user_id = u.user_id
+     WHERE u.user_id = ?`,
+    [id],
   );
 
   return rows[0] || null;
 };
 
 // 3. Kiểm tra username, email hoặc phone đã tồn tại
-const findExistingUser = async ({ username, email, phone }) => {
+const findExistingUser = async ({
+  username,
+  email,
+  phone,
+  excludeUserId = null,
+}) => {
   const [rows] = await db.query(
     `SELECT user_id, username, email, phone
      FROM users
-     WHERE username = ? OR email = ? OR phone = ?
+     WHERE (username = ? OR email = ? OR phone = ?)
+       AND (? IS NULL OR user_id <> ?)
      LIMIT 1`,
-    [username, email, phone]
+    [username, email, phone, excludeUserId, excludeUserId],
   );
 
   return rows[0] || null;
 };
 
 // 4. Tạo tài khoản
-const createUser = async ({
-  username,
-  passwordHash,
-  email,
-  phone,
-  role
-}) => {
+const createUser = async ({ username, password_hash, email, phone, role }) => {
   const [result] = await db.query(
     `INSERT INTO users
       (username, password_hash, email, phone, role)
      VALUES (?, ?, ?, ?, ?)`,
-    [username, passwordHash, email, phone, role]
+    [username, password_hash, email, phone, role],
   );
 
   return getUserById(result.insertId);
@@ -85,7 +85,7 @@ const updateUser = async (id, data) => {
   await db.query(
     `UPDATE users SET ${fields.join(", ")}
      WHERE user_id = ?`,
-    values
+    values,
   );
 
   return getUserById(id);
@@ -93,12 +93,19 @@ const updateUser = async (id, data) => {
 
 // 6. Khóa hoặc mở khóa tài khoản
 const updateUserStatus = async (id, isActive) => {
-  await db.query(
-    "UPDATE users SET is_active = ? WHERE user_id = ?",
-    [isActive, id]
-  );
+  await db.query("UPDATE users SET is_active = ? WHERE user_id = ?", [
+    isActive,
+    id,
+  ]);
 
   return getUserById(id);
+};
+
+// 7. Xóa tài khoản
+const deleteUser = async (id) => {
+  const [result] = await db.query("DELETE FROM users WHERE user_id = ?", [id]);
+
+  return result.affectedRows > 0;
 };
 
 module.exports = {
@@ -107,5 +114,6 @@ module.exports = {
   findExistingUser,
   createUser,
   updateUser,
-  updateUserStatus
+  updateUserStatus,
+  deleteUser,
 };

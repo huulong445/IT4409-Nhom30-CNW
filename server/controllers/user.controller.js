@@ -1,124 +1,156 @@
 const userModel = require("../models/user.model");
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
 
-const getAllUsers = async (req, res) => {
+const getOwnProfile = async (req, res) => {
   try {
-    const users = await userModel.getAllUsers();
+    const user = await userModel.getUserById(req.user.user_id);
 
-    return res.status(200).json({
-      success: true,
-      message: "Lấy danh sách người dùng thành công!",
-      data: users,
-    });
-  } catch (error) {
-    console.error("Lỗi lấy danh sách người dùng: ", error.message);
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message,
-    });
-  }
-};
-
-const getUserById = async (req, res) => {
-  try {
-    const { user_id } = req.params;
-    const user = await userModel.getUserById(user_id);
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: "Không tìm thấy user",
+        message: "Không tìm thấy tài khoản",
       });
     }
+
     return res.status(200).json({
       success: true,
-      message: "Truy vấn người dùng theo ID OK",
       data: user,
     });
   } catch (error) {
-    console.error("Không lấy được thông tin user: ", error.message);
+    console.error("getOwnProfile:", error.message);
     return res.status(500).json({
       success: false,
-      message: "Lỗi server",
-      error: error.message,
+      message: "Lỗi server khi lấy hồ sơ",
     });
   }
 };
 
-// const getPasswordByUser = async (req, res) => {
-//   try {
-//     const { username } = req.body;
-//     const pass = await userModel.getPasswordByUser(username);
-//     return res.status(200).json({
-//       success: true,
-//       message: "Truy vấn password OK",
-//       data: pass,
-//     });
-//   } catch (error) {
-//     console.error("Không lấy được mật khẩu user: ", error.message);
-//     return res.status(500).json({
-//       success: false,
-//       message: "Lỗi server",
-//       error: error.message,
-//     });
-//   }
-// };
+const updateOwnProfile = async (req, res) => {
+  const allowedFields = ["username", "email", "phone"];
+  const body = req.body;
 
-const login = async (req, res) => {
-  try {
-    const { username, password } = req.body;
-    if (!username || !password) {
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return res.status(400).json({
+      success: false,
+      message: "Dữ liệu hồ sơ không hợp lệ",
+    });
+  }
+
+  const unknownFields = Object.keys(body).filter(
+    (field) => !allowedFields.includes(field),
+  );
+  if (unknownFields.length > 0) {
+    return res.status(400).json({
+      success: false,
+      message: `Không hỗ trợ cập nhật các trường: ${unknownFields.join(", ")}`,
+    });
+  }
+
+  const data = {};
+  for (const field of allowedFields) {
+    if (body[field] === undefined) {
+      continue;
+    }
+
+    if (typeof body[field] !== "string" || !body[field].trim()) {
       return res.status(400).json({
         success: false,
-        message: "Vui lòng điền đủ thông tin đăng nhập",
-      });
-    }
-    const user = await userModel.getPasswordByUser(username);
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: "Tài khoản hoặc mật khẩu không chính xác",
+        message: `${field} phải là chuỗi và không được để trống`,
       });
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.password_hash);
-    if (!isPasswordValid) {
-      return res.status(401).json({
+    data[field] = body[field].trim();
+  }
+
+  if (Object.keys(data).length === 0) {
+    return res.status(400).json({
+      success: false,
+      message: "Vui lòng cung cấp ít nhất một thông tin cần cập nhật",
+    });
+  }
+
+  if (
+    data.username !== undefined &&
+    !/^[a-zA-Z0-9_]{3,30}$/.test(data.username)
+  ) {
+    return res.status(400).json({
+      success: false,
+      message: "Tên đăng nhập phải từ 3-30 ký tự, chỉ gồm chữ, số và dấu gạch dưới",
+    });
+  }
+
+  if (data.email !== undefined) {
+    data.email = data.email.toLowerCase();
+    if (
+      data.email.length > 100 ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)
+    ) {
+      return res.status(400).json({
         success: false,
-        message: "Tài khoản hoặc mật khẩu không chính xác",
+        message: "Địa chỉ email không hợp lệ",
       });
     }
-    // tạo token
-    const token = jwt.sign(
-      { userId: user.user_id, role: user.role },
-      process.env.JWT_SECRET || "secret_key",
-      { expiresIn: "24h" },
-    );
+  }
+
+  if (data.phone !== undefined && data.phone.length > 20) {
+    return res.status(400).json({
+      success: false,
+      message: "Số điện thoại không được vượt quá 20 ký tự",
+    });
+  }
+
+  try {
+    const user = await userModel.updateProfile(req.user.user_id, data);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy tài khoản",
+      });
+    }
+
     return res.status(200).json({
       success: true,
-      // ~ session
-      data: {
-        token,
-        user: {
-          id: user.user_id,
-          username: user.username,
-          role: user.role,
-        },
-      },
+      message: "Cập nhật hồ sơ thành công",
+      data: user,
     });
   } catch (error) {
-    console.log("Lỗi login: ", error.message);
+    if (error.code === "ER_DUP_ENTRY") {
+      return res.status(409).json({
+        success: false,
+        message: "Tên đăng nhập, email hoặc số điện thoại đã được sử dụng",
+      });
+    }
+
+    console.error("updateOwnProfile:", error.message);
     return res.status(500).json({
       success: false,
-      message: "Server error",
-      error: error.message,
+      message: "Lỗi server khi cập nhật hồ sơ",
     });
   }
 };
 
-module.exports = {
-  getAllUsers,
-  login,
-  getUserById,
+const deactivateOwnAccount = async (req, res) => {
+  try {
+    const deactivated = await userModel.deactivateAccount(req.user.user_id);
+
+    if (!deactivated) {
+      return res.status(404).json({
+        success: false,
+        message: "Tài khoản không tồn tại hoặc đã bị vô hiệu hóa",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Tài khoản đã được vô hiệu hóa",
+    });
+  } catch (error) {
+    console.error("deactivateOwnAccount:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Lỗi server khi vô hiệu hóa tài khoản",
+    });
+  }
 };
+
+module.exports = { getOwnProfile, updateOwnProfile, deactivateOwnAccount };

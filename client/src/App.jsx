@@ -6,7 +6,6 @@ import DashboardLayout from './layouts/DashboardLayout';
 import PatientRegister from './pages/auth/PatientRegister';
 import PatientBooking from './pages/patient/PatientBooking';
 import AuthLayout from './layouts/AuthLayout';
-import PatientLogin from './pages/auth/PatientLogin';
 
 // Patient pages
 import PatientLayout from './layouts/PatientLayout';
@@ -28,20 +27,25 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import UserManagement from './pages/admin/UserManagement';
 import DepartmentManagement from './pages/admin/DepartmentManagement';
 import AdminReports from './pages/admin/AdminReports';
+import StaffManagement from './pages/admin/StaffManagement';
+import PatientManagement from './pages/admin/PatientManagement';
+
 
 import NotFound from './pages/NotFound';
 import Login from './pages/auth/Login';
+import LandingPage from './pages/LandingPage';
+import Profile from "./pages/profile/Profile";
 
 function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          {/* Trang Đăng nhập */}
-          <Route path="/login" element={<Login />} />
+          {/* Trang chủ Landing Page */}
+          <Route path="/" element={<LandingPage />} />
 
-          {/* Mặc định chuyển hướng vào giao diện Bác sĩ */}
-          <Route path="/" element={<Navigate to="/doctor" replace />} />
+          {/* Trang Đăng nhập cán bộ y tế */}
+          <Route path="/login" element={<Login />} />
 
           {/* Giao diện Bác sĩ Lâm sàng (Clinical Doctor Portal) */}
           <Route path="/doctor" element={<DashboardLayout />}>
@@ -50,32 +54,36 @@ function App() {
             <Route path="prescriptions" element={<DoctorPrescriptions />} />
             <Route path="labs" element={<DoctorLabs />} />
             <Route path="schedule" element={<DoctorSchedule />} />
+            <Route path="profile" element={<Profile />} />
           </Route>
 
           {/* Giao diện Bác sĩ Cận lâm sàng (Paraclinical Doctor Portal) */}
           <Route path="/paraclinical" element={<DashboardLayout />}>
             <Route index element={<ParaclinicalDashboard />} />
             <Route path="schedule" element={<ParaclinicalSchedule />} />
+            <Route path="profile" element={<Profile />} />
           </Route>
 
           {/* Giao diện Quản trị viên (Admin Portal) */}
           <Route path="/admin" element={<DashboardLayout />}>
             <Route index element={<AdminDashboard />} />
             <Route path="users" element={<UserManagement />} />
+            <Route path="staff" element={<StaffManagement />} />
+            <Route path="patients" element={<PatientManagement />} />
             <Route path="departments" element={<DepartmentManagement />} />
             <Route path="reports" element={<AdminReports />} />
+            <Route path="profile" element={<Profile />} />
           </Route>
 
           {/* Giao diện bệnh nhân */}
           <Route path="/patient" element={<PatientLayout />}>
             <Route index element={<PatientHome />} />
             <Route path="booking" element={<PatientBooking />} />
+            <Route path="profile" element={<Profile />} />
           </Route>
 
-          {/* Giao diện xác thực */}
-          <Route path="/patient/login" element={<AuthLayout />}>
-            <Route index element={<PatientLogin />} />
-          </Route>
+          {/* Giao diện xác thực tập trung: tự động chuyển về trang login thống nhất */}
+          <Route path="/patient/login" element={<Navigate to="/login?role=patient" replace />} />
 
           <Route path="/patient/register" element={<AuthLayout />}>
             <Route index element={<PatientRegister />} />

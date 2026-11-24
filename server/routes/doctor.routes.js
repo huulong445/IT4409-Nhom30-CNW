@@ -8,7 +8,10 @@ const prescriptionController = require("../controllers/doctor_controller/Prescri
 const doctorController = require("../controllers/doctor_controller/WaitingPatients.controller");
 const labResultController = require("../controllers/doctor_controller/LabResult.controller");
 // Middleware xác thực
-const { verifyToken } = require("../middleware/auth.middleware");
+const { authenticate } = require("../middlewares/auth.middleware");
+const { authorization } = require("../middlewares/rbac.middleware");
+const { ROLES } = require("../config/roles");
+router.use(authenticate, authorization(ROLES.DOCTOR));
 
 // ==========================================
 // 1. ROUTES CHO LAB REQUESTS (Cận lâm sàng)
@@ -17,7 +20,6 @@ const { verifyToken } = require("../middleware/auth.middleware");
 // router.get("/lab-requests", labRequestController.GetLabRequests);
 // router.put("/lab-requests/:lab_request_id", verifyToken, labRequestController.UpdateLabRequest);
 // router.delete("/lab-requests/:lab_request_id", verifyToken, labRequestController.DeleteLabRequest);
-
 
 // // ==========================================
 // // 2. ROUTES CHO MEDICAL RECORDS (Bệnh án điện tử)
@@ -28,7 +30,6 @@ const { verifyToken } = require("../middleware/auth.middleware");
 // router.put("/medical-records/:record_id", verifyToken, medicalRecordController.UpdateMedicalRecord);
 // router.delete("/medical-records/:record_id", verifyToken, medicalRecordController.DeleteMedicalRecord);
 
-
 // // ==========================================
 // // 3. ROUTES CHO PRESCRIPTIONS (Đơn thuốc)
 // // ==========================================
@@ -36,7 +37,6 @@ const { verifyToken } = require("../middleware/auth.middleware");
 // router.get("/prescriptions/:record_id", prescriptionController.GetPrescriptionByRecord);
 // router.put("/prescriptions/:prescription_id", verifyToken, prescriptionController.UpdatePrescription);
 // router.delete("/prescriptions/:prescription_id", verifyToken, prescriptionController.DeletePrescription);
-
 
 // // ==========================================
 // // 4. ROUTES CHO DOCTOR (Bác sĩ - Bệnh nhân chờ khám)
@@ -51,26 +51,29 @@ router.get("/lab-requests", labRequestController.GetLabRequests); //OK
 router.put("/lab-requests", labRequestController.UpdateLabRequest);
 router.delete("/lab-requests", labRequestController.DeleteLabRequest);
 
-
 // ==========================================
 // 2. ROUTES CHO MEDICAL RECORDS (Bệnh án điện tử)
 // ==========================================
 router.post("/medical-records", medicalRecordController.CreateMedicalRecord);
 router.get("/medical-records", medicalRecordController.GetMedicalRecordById);
-router.get("/medical-records/patient", medicalRecordController.GetMedicalRecordsByPatient);
+router.get(
+  "/medical-records/patient",
+  medicalRecordController.GetMedicalRecordsByPatient,
+);
 router.put("/medical-records", medicalRecordController.UpdateMedicalRecord);
 router.delete("/medical-records", medicalRecordController.DeleteMedicalRecord);
-
 
 // ==========================================
 // 3. ROUTES CHO PRESCRIPTIONS (Đơn thuốc)
 // ==========================================
 router.post("/prescriptions", prescriptionController.CreatePrescription);
 router.get("/prescriptions", prescriptionController.GetPrescriptionByRecord);
-router.get("/prescriptions/patient", prescriptionController.GetPrescriptionByRecord);
+router.get(
+  "/prescriptions/patient",
+  prescriptionController.GetPrescriptionByRecord,
+);
 router.put("/prescriptions", prescriptionController.UpdatePrescription);
 router.delete("/prescriptions", prescriptionController.DeletePrescription);
-
 
 // ==========================================
 // 4. ROUTES CHO DOCTOR (Bác sĩ - Bệnh nhân chờ khám)

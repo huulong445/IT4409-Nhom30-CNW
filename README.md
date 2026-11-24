@@ -129,11 +129,13 @@ npm run dev
 Server check
 
 ```
-http://localhost:5000/api/v1/health
+http://localhost:5000/api/v1/test
 ```
 
 ## Khởi tạo DB
-
+```
+cd database
+```
 1. Đăng nhập MySQL local
 
 ```
@@ -144,8 +146,8 @@ mysql -u root -p
 
 ```
 USE hospital_db;
-SOURCE schema.sql;
-SOURCE data.sql;
+SOURCE schema_new.sql;
+SOURCE data_new.sql;
 ```
 
 2.5 Tạo JWT Secret Key

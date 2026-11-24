@@ -1,16 +1,16 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { 
-  Users, 
-  Stethoscope, 
-  ClipboardList, 
-  Pill, 
-  FlaskConical, 
-  Calendar, 
-  LayoutDashboard, 
-  Building2, 
-  FileSpreadsheet, 
+import {
+  Users,
+  Stethoscope,
+  ClipboardList,
+  Pill,
+  FlaskConical,
+  Calendar,
+  LayoutDashboard,
+  Building2,
+  FileSpreadsheet,
   Settings,
   HelpCircle,
   Activity
@@ -20,74 +20,85 @@ const Sidebar = () => {
   const { user } = useAuth();
 
   const doctorNavItems = [
-    { 
-      to: "/doctor", 
-      icon: ClipboardList, 
-      label: "Hàng đợi khám bệnh", 
-      badge: "5",
-      badgeColor: "bg-slate-100 text-slate-700 border border-slate-200" 
+    {
+      to: "/doctor",
+      icon: ClipboardList,
+      label: "Hàng đợi khám bệnh",
     },
-    { 
-      to: "/doctor/exam", 
-      icon: Stethoscope, 
-      label: "Phòng khám bệnh", 
-      sub: "Bệnh nhân hiện tại" 
+    {
+      to: "/doctor/exam",
+      icon: Stethoscope,
+      label: "Phòng khám bệnh",
+      sub: "Bệnh nhân hiện tại"
     },
-    { 
-      to: "/doctor/prescriptions", 
-      icon: Pill, 
-      label: "Kho thuốc", 
+    {
+      to: "/doctor/labs",
+      icon: FlaskConical,
+      label: "Chỉ định xét nghiệm",
     },
-    { 
-      to: "/doctor/schedule", 
-      icon: Calendar, 
-      label: "Lịch trực phòng khám", 
+    {
+      to: "/doctor/prescriptions",
+      icon: Pill,
+      label: "Tra cứu đơn thuốc",
+    },
+    {
+      to: "/doctor/schedule",
+      icon: Calendar,
+      label: "Lịch trực phòng khám",
     },
   ];
 
   const paraclinicalNavItems = [
-    { 
-      to: "/paraclinical", 
-      icon: FlaskConical, 
-      label: "Tiếp nhận & Trả KQ CLS", 
-      badge: "3",
-      badgeColor: "bg-slate-100 text-slate-700 border border-slate-200" 
+    {
+      to: "/paraclinical",
+      icon: FlaskConical,
+      label: "Tiếp nhận & Trả KQ CLS",
     },
-    { 
-      to: "/paraclinical/schedule", 
-      icon: Calendar, 
-      label: "Lịch trực phòng kỹ thuật", 
+    {
+      to: "/paraclinical/schedule",
+      icon: Calendar,
+      label: "Lịch trực phòng kỹ thuật",
     },
   ];
 
   const adminNavItems = [
-    { 
-      to: "/admin", 
-      icon: LayoutDashboard, 
-      label: "Tổng quan điều hành", 
-      exact: true 
+    {
+      to: "/admin",
+      icon: LayoutDashboard,
+      label: "Tổng quan điều hành",
+      exact: true
     },
-    { 
-      to: "/admin/users", 
-      icon: Users, 
-      label: "Quản lý Người dùng & Bác sĩ", 
+    {
+      to: "/admin/users",
+      icon: Users,
+      label: "Quản lý tài khoản",
     },
-    { 
-      to: "/admin/departments", 
-      icon: Building2, 
-      label: "Quản lý Khoa phòng & Dịch vụ", 
+    {
+      to: "/admin/staff",
+      icon: Stethoscope,
+      label: "Quản lý nhân sự",
     },
-    { 
-      to: "/admin/reports", 
-      icon: FileSpreadsheet, 
-      label: "Thống kê & Viện phí", 
+    {
+      to: "/admin/patients",
+      icon: ClipboardList,
+      label: "Quản lý bệnh nhân",
+    },
+    {
+      to: "/admin/departments",
+      icon: Building2,
+      label: "Quản lý Khoa phòng & Dịch vụ",
+    },
+    {
+      to: "/admin/reports",
+      icon: FileSpreadsheet,
+      label: "Thống kê & Viện phí",
     },
   ];
 
-  const currentNav = user.role === 'ADMIN' 
-    ? adminNavItems 
-    : user.role === 'PARACLINICAL' 
-    ? paraclinicalNavItems 
+  const currentNav = user.role === 'ADMIN'
+    ? adminNavItems
+    : (user.role === 'PARACLINICAL' || user.role === 'LAB_TECH')
+    ? paraclinicalNavItems
     : doctorNavItems;
 
   return (
@@ -97,16 +108,16 @@ const Sidebar = () => {
         <div className="mb-4 p-3 rounded-lg bg-slate-50 border border-slate-200">
           <div className="flex items-center gap-2 text-xs font-semibold text-slate-800 uppercase tracking-wide">
             <Activity className="w-3.5 h-3.5 text-slate-600" />
-            {user.role === 'ADMIN' 
-              ? 'Chế độ Quản trị' 
-              : user.role === 'PARACLINICAL' 
-              ? 'Khu vực Cận lâm sàng' 
+            {user.role === 'ADMIN'
+              ? 'Chế độ Quản trị'
+              : (user.role === 'PARACLINICAL' || user.role === 'LAB_TECH')
+              ? 'Khu vực Cận lâm sàng'
               : 'Khu vực Lâm sàng'}
           </div>
           <p className="text-xs text-slate-600 mt-1">
-            {user.role === 'ADMIN' 
-              ? 'Toàn quyền kiểm soát tài khoản và hệ thống' 
-              : `${user.departmentName} - ${user.room}`}
+            {user.role === 'ADMIN'
+              ? 'Toàn quyền kiểm soát tài khoản và hệ thống'
+              : [user.departmentName, user.room].filter(Boolean).join(" - ") || "Chưa có thông tin khoa/phòng"}
           </p>
         </div>
 
@@ -121,8 +132,8 @@ const Sidebar = () => {
                 end={item.to === "/doctor" || item.to === "/admin" || item.to === "/paraclinical"}
                 className={({ isActive }) => `
                   flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all
-                  ${isActive 
-                    ? 'bg-[#004282] text-white shadow-sm font-semibold' 
+                  ${isActive
+                    ? 'bg-[#004282] text-white shadow-sm font-semibold'
                     : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}
                 `}
               >
