@@ -1,447 +1,297 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  CalendarPlus, CalendarDays, ClipboardList,
-  FlaskConical, ArrowRight, HeartPulse,
-  LayoutDashboard, Info, CheckCircle2, Clock,
-  FileText, Activity, AlertCircle, RefreshCw
+  Activity,
+  AlertCircle,
+  ArrowRight,
+  CalendarDays,
+  CalendarPlus,
+  CheckCircle2,
+  ClipboardList,
+  FlaskConical,
+  HeartPulse,
+  LayoutDashboard,
+  RefreshCw,
+  ShieldCheck,
+  UserRound,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
 
-const services = [
+const features = [
   {
     id: 'booking',
     title: 'Đặt lịch khám',
-    description: 'Lựa chọn chuyên khoa, phòng khám và khung giờ khám nhanh chóng.',
+    description: 'Xem trước cách chọn chuyên khoa, phòng khám và khung giờ.',
     icon: CalendarPlus,
   },
   {
     id: 'appointments',
     title: 'Lịch khám của tôi',
-    description: 'Theo dõi các lịch hẹn trực tuyến và số thứ tự phòng khám.',
+    description: 'Cần API lấy lịch hẹn theo tài khoản bệnh nhân.',
     icon: CalendarDays,
   },
   {
     id: 'records',
     title: 'Hồ sơ bệnh án',
-    description: 'Tra cứu lịch sử chẩn đoán, toa thuốc điện tử và lời dặn bác sĩ.',
+    description: 'Cần API cho bệnh nhân xem bệnh án của chính mình.',
     icon: ClipboardList,
   },
   {
     id: 'results',
-    title: 'Kết quả xét nghiệm',
-    description: 'Theo dõi chỉ định cận lâm sàng, xét nghiệm máu và chẩn đoán hình ảnh.',
+    title: 'Chỉ định xét nghiệm',
+    description: 'Cần API cho bệnh nhân theo dõi chỉ định và kết quả.',
     icon: FlaskConical,
   },
 ];
 
+const unavailableFeatures = {
+  appointments: {
+    title: 'Lịch hẹn khám bệnh',
+    message:
+      'Backend hiện chưa có API cho bệnh nhân lấy danh sách lịch hẹn của chính mình. ' +
+      'API /doctor/appointments chỉ dành cho bác sĩ và không thể thay thế bằng user_id của bệnh nhân.',
+  },
+  records: {
+    title: 'Hồ sơ bệnh án điện tử',
+    message:
+      'Backend có API lấy bệnh án theo patient_id, nhưng API đó nằm dưới /doctor và yêu cầu quyền DOCTOR. ' +
+      'Cần backend bổ sung endpoint riêng có kiểm tra quyền truy cập hồ sơ của bệnh nhân.',
+  },
+  results: {
+    title: 'Chỉ định và kết quả xét nghiệm',
+    message:
+      'Backend hiện có API tra cứu chỉ định xét nghiệm dành cho bác sĩ, chưa có endpoint tương ứng ' +
+      'cho bệnh nhân. Không thể xác nhận đã có kết quả chỉ từ trạng thái hoặc dữ liệu mẫu.',
+  },
+};
+
 export default function PatientHome() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
+  const [profile, setProfile] = useState(null);
+  const [profileStatus, setProfileStatus] = useState('idle');
+  const [profileError, setProfileError] = useState('');
 
-  // Backend state
-  const [loading, setLoading] = useState(false);
-  const [appointments, setAppointments] = useState([]);
-  const [records, setRecords] = useState([]);
-  const [labRequests, setLabRequests] = useState([]);
-  const [apiStatus, setApiStatus] = useState({ connected: false, checked: false });
+  const isPatient = String(user?.role || '').toUpperCase() === 'PATIENT';
 
-  // Load real data from Backend APIs on mount and tab switch
-  useEffect(() => {
-    fetchBackendData();
-  }, [user]);
+  const loadProfile = useCallback(async () => {
+    setProfile(null);
+    setProfileError('');
 
-  const fetchBackendData = async () => {
-    setLoading(true);
-    try {
-      // 1. Kiểm tra health BE
-      const healthRes = await api.get('/health').catch(() => null);
-      if (healthRes && healthRes.data?.status === 'OK') {
-        setApiStatus({ connected: true, checked: true });
-      } else {
-        setApiStatus({ connected: false, checked: true });
-      }
-
-      // 2. Lấy danh sách lịch hẹn (cần doctor_id và date theo backend API)
-      const today = new Date().toISOString().slice(0, 10);
-      const apptRes = await api.get(`/doctor/appointments?doctor_id=1&date=${today}`).catch(err => {
-        console.warn('Lỗi gọi API /doctor/appointments:', err.message);
-        return null;
-      });
-      if (apptRes?.data?.data && Array.isArray(apptRes.data.data)) {
-        setAppointments(apptRes.data.data);
-      } else {
-        // Fallback demo data
-        setAppointments([
-          {
-            appointment_id: 101,
-            patient_name: user?.fullName || "Nguyễn Thị Mai Lan",
-            appointment_date: "2026-11-09",
-            appointment_time: "14:00",
-            specialty_name: "Y học Cổ Truyền",
-            room_name: "Phòng khám Y học cổ truyền - P311",
-            status: "CONFIRMED",
-            doctor_name: "PGS.TS Nguyễn Văn Trung"
-          }
-        ]);
-      }
-
-      // 3. Lấy hồ sơ bệnh án
-      const patientId = user?.id || 1;
-      const recRes = await api.get(`/doctor/medical-records/patient/${patientId}`).catch(err => {
-        console.warn(`Lỗi gọi API /doctor/medical-records/patient/${patientId}:`, err.message);
-        return null;
-      });
-      if (recRes?.data?.data && Array.isArray(recRes.data.data)) {
-        setRecords(recRes.data.data);
-      } else {
-        setRecords([
-          {
-            record_id: 201,
-            visit_date: "2026-10-20",
-            diagnosis: "Tăng huyết áp vô căn (I10) - Rối loạn lipid máu hỗn hợp (E78.2)",
-            treatment_plan: "Amlodipine 5mg x 30 viên; Atorvastatin 20mg x 30 viên.",
-            doctor_notes: "Hạn chế muối, kiêng mỡ động vật. Tái khám sau 30 ngày."
-          }
-        ]);
-      }
-
-      // 4. Lấy kết quả xét nghiệm / cận lâm sàng
-      const labRes = await api.get('/doctor/lab-requests').catch(err => {
-        console.warn('Lỗi gọi API /doctor/lab-requests:', err.message);
-        return null;
-      });
-      if (labRes?.data?.data && Array.isArray(labRes.data.data)) {
-        setLabRequests(labRes.data.data);
-      } else {
-        setLabRequests([
-          {
-            lab_request_id: 301,
-            test_type: "Tổng phân tích tế bào máu ngoại vi (24 thông số)",
-            status: "COMPLETED",
-            result: "Bạch cầu: 6.8 K/uL, Hồng cầu: 4.6 M/uL, Tiểu cầu: 250 K/uL. Bình thường.",
-            created_at: "2026-10-20 08:30"
-          },
-          {
-            lab_request_id: 302,
-            test_type: "Bộ mỡ máu toàn phần (Lipid profile)",
-            status: "COMPLETED",
-            result: "Cholesterol toàn phần: 5.8 mmol/L, Triglyceride: 2.2 mmol/L. Tăng nhẹ.",
-            created_at: "2026-10-20 08:45"
-          }
-        ]);
-      }
-    } catch (err) {
-      console.error('Lỗi khi tải dữ liệu người bệnh từ backend:', err);
-    } finally {
-      setLoading(false);
+    if (!user) {
+      setProfileStatus('guest');
+      return;
     }
-  };
+    if (!isPatient) {
+      setProfileStatus('wrong-role');
+      return;
+    }
+    if (!localStorage.getItem('token')) {
+      setProfileStatus('demo');
+      return;
+    }
+
+    setProfileStatus('loading');
+    try {
+      const response = await api.get('/users/profile');
+      if (!response.data?.success || !response.data?.data) {
+        throw new Error(response.data?.message || 'Phản hồi API không hợp lệ.');
+      }
+      const data = response.data.data;
+      if (String(data.role || '').toUpperCase() !== 'PATIENT') {
+        throw new Error('Tài khoản xác thực không có vai trò PATIENT.');
+      }
+      setProfile(data);
+      setProfileStatus('success');
+    } catch (error) {
+      setProfileStatus('error');
+      setProfileError(
+        error.response?.data?.message || error.message || 'Không thể lấy thông tin tài khoản.'
+      );
+    }
+  }, [user?.user_id, user?.id, user?.role, isPatient]);
+
+  useEffect(() => {
+    loadProfile();
+  }, [loadProfile]);
+
+  const currentFeature = unavailableFeatures[activeTab];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 md:py-10">
-      {/* Tiêu đề & Thông báo Backend */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-7">
+    <div className="max-w-7xl mx-auto px-4 py-8 md:py-10 space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
-          <p className="text-[#005baa] text-sm font-semibold mb-1 flex items-center gap-2">
-            CỔNG THÔNG TIN NGƯỜI BỆNH
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-              API BE: /api/v1
-            </span>
-          </p>
-          <h2 className="text-2xl md:text-3xl font-bold text-slate-900">
+          <div className="flex items-center gap-2 text-[#005baa] text-xs font-bold uppercase tracking-wider">
+            <HeartPulse size={18} /> Cổng thông tin người bệnh
+          </div>
+          <h1 className="mt-2 text-2xl md:text-3xl font-extrabold text-slate-900">
             Chăm sóc sức khỏe thuận tiện hơn
-          </h2>
-          <p className="text-slate-500 mt-1">
-            Quản lý lịch khám và thông tin y tế của bạn trực tiếp từ hệ thống Bệnh viện Bách Khoa.
+          </h1>
+          <p className="mt-2 text-sm text-slate-600 max-w-3xl">
+            Xem các chức năng dành cho bệnh nhân. Dữ liệu y tế chỉ được hiển thị khi
+            backend cung cấp API và tài khoản có quyền truy cập phù hợp.
           </p>
         </div>
-
         <button
-          onClick={fetchBackendData}
-          disabled={loading}
-          className="self-start md:self-auto flex items-center gap-2 px-3.5 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-xl shadow-sm transition"
+          type="button"
+          onClick={loadProfile}
+          disabled={profileStatus === 'loading'}
+          className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-50"
         >
-          <RefreshCw size={14} className={loading ? 'animate-spin text-blue-600' : ''} />
-          {loading ? 'Đang đồng bộ...' : 'Đồng bộ dữ liệu Backend'}
+          <RefreshCw size={16} className={profileStatus === 'loading' ? 'animate-spin' : ''} />
+          Kiểm tra tài khoản
         </button>
       </div>
 
-      {/* Tabs điều hướng */}
-      <nav className="flex gap-2 overflow-x-auto pb-3 mb-6">
+      <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm" role="status">
+        {profileStatus === 'loading' || profileStatus === 'idle' ? (
+          <p className="text-slate-600">Đang kiểm tra thông tin tài khoản...</p>
+        ) : profileStatus === 'success' ? (
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-start gap-2.5">
+              <CheckCircle2 size={20} className="mt-0.5 shrink-0 text-emerald-600" />
+              <div>
+                <p className="font-semibold text-slate-900">Thông tin tài khoản đã được xác thực</p>
+                <p className="mt-1 text-slate-600">
+                  Tên đăng nhập: <strong>{profile.username}</strong>
+                  {profile.email && <> · Email: {profile.email}</>}
+                  {profile.phone && <> · SĐT: {profile.phone}</>}
+                </p>
+              </div>
+            </div>
+            <Link to="/patient/profile" className="text-[#004282] font-semibold hover:underline whitespace-nowrap">
+              Xem hồ sơ tài khoản
+            </Link>
+          </div>
+        ) : (
+          <div className="flex items-start gap-2.5">
+            <AlertCircle size={20} className="mt-0.5 shrink-0 text-amber-600" />
+            <div className="text-slate-700">
+              {profileStatus === 'guest' && (
+                <>Bạn chưa đăng nhập. <Link to="/login?role=patient" className="font-bold text-[#004282] hover:underline">Đăng nhập</Link> để xem tài khoản.</>
+              )}
+              {profileStatus === 'wrong-role' && 'Bạn đang sử dụng tài khoản không có vai trò PATIENT.'}
+              {profileStatus === 'demo' &&
+                'Đang xem giao diện bằng tài khoản demo. Chưa có phiên đăng nhập backend hợp lệ; dữ liệu y tế không được tải.'}
+              {profileStatus === 'error' && (
+                <>Không thể xác thực thông tin tài khoản từ backend: {profileError}</>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <nav className="flex gap-2 overflow-x-auto pb-1" aria-label="Các mục thông tin bệnh nhân">
         {[
           { id: 'overview', label: 'Tổng quan', icon: LayoutDashboard },
-          { id: 'booking', label: 'Đặt lịch', icon: CalendarPlus, link: '/patient/booking' },
-          { id: 'appointments', label: `Lịch hẹn (${appointments.length})`, icon: CalendarDays },
-          { id: 'records', label: `Bệnh án (${records.length})`, icon: ClipboardList },
-          { id: 'results', label: `Xét nghiệm (${labRequests.length})`, icon: FlaskConical },
-        ].map((item) => (
-          item.link ? (
-            <Link
-              key={item.id}
-              to={item.link}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap bg-white text-slate-600 border border-slate-200 hover:bg-blue-50 transition"
-            >
-              <item.icon size={17} />
-              {item.label}
-            </Link>
-          ) : (
-            <button
-              key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap transition ${
-                activeTab === item.id
-                  ? 'bg-[#004282] text-white shadow-sm'
-                  : 'bg-white text-slate-600 border border-slate-200 hover:bg-blue-50'
-              }`}
-            >
-              <item.icon size={17} />
-              {item.label}
-            </button>
-          )
+          { id: 'appointments', label: 'Lịch hẹn', icon: CalendarDays },
+          { id: 'records', label: 'Bệnh án', icon: ClipboardList },
+          { id: 'results', label: 'Xét nghiệm', icon: FlaskConical },
+        ].map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => setActiveTab(id)}
+            aria-current={activeTab === id ? 'page' : undefined}
+            className={`inline-flex items-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-semibold transition ${
+              activeTab === id
+                ? 'bg-[#004282] text-white shadow-sm'
+                : 'border border-slate-200 bg-white text-slate-700 hover:bg-blue-50'
+            }`}
+          >
+            <Icon size={17} /> {label}
+          </button>
         ))}
       </nav>
 
-      {/* TAB 1: TỔNG QUAN */}
       {activeTab === 'overview' && (
         <>
-          <section className="rounded-2xl bg-gradient-to-r from-[#004282] to-[#0872b7] text-white p-6 md:p-9 mb-7 shadow-lg">
+          <section className="rounded-2xl bg-gradient-to-r from-[#004282] to-[#0872b7] p-6 md:p-9 text-white shadow-lg">
             <div className="flex items-start gap-4">
-              <HeartPulse className="hidden sm:block shrink-0 text-blue-200" size={46} />
+              <HeartPulse size={44} className="hidden sm:block shrink-0 text-blue-200" />
               <div>
-                <p className="text-blue-100 text-sm mb-1 font-medium">
-                  Hệ Thống Y Tế Thông Minh Bách Khoa
+                <p className="text-blue-100 text-sm font-medium">Hệ thống y tế Bách Khoa</p>
+                <h2 className="mt-1 text-xl md:text-2xl font-bold">
+                  Xin chào, {profile?.username || (isPatient ? user?.username : null) || 'Quý người bệnh'}!
+                </h2>
+                <p className="mt-2 max-w-2xl text-sm leading-relaxed text-blue-100">
+                  Giao diện đặt khám và tra cứu thông tin đang được tích hợp với backend.
+                  Các khung giờ hiển thị ở trang đặt lịch hiện chỉ mang tính minh họa.
                 </p>
-                <h3 className="text-xl md:text-2xl font-bold mb-2">
-                  Xin chào, {user?.fullName || "Quý Người Bệnh"}!
-                </h3>
-                <p className="text-blue-100 text-sm max-w-xl leading-relaxed">
-                  Chủ động đặt lịch theo chuyên khoa, theo dõi quá trình khám chữa bệnh
-                  và cập nhật hồ sơ bệnh án trực tuyến 24/7.
-                </p>
-                <div className="mt-5 flex flex-wrap gap-3">
-                  <Link
-                    to="/patient/booking"
-                    className="bg-white text-[#004282] px-5 py-2.5 rounded-xl font-bold text-sm inline-flex items-center gap-2 hover:bg-blue-50 shadow-sm transition active:scale-95"
-                  >
-                    <CalendarPlus size={18} />
-                    Đặt lịch khám ngay
-                    <ArrowRight size={17} />
-                  </Link>
-
-                  <button
-                    onClick={() => setActiveTab('appointments')}
-                    className="bg-white/15 hover:bg-white/25 text-white border border-white/20 px-4 py-2.5 rounded-xl font-semibold text-sm inline-flex items-center gap-2 transition"
-                  >
-                    <CalendarDays size={18} />
-                    Xem lịch khám đã đặt
-                  </button>
-                </div>
+                <Link
+                  to="/patient/booking"
+                  className="mt-5 inline-flex items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-bold text-[#004282] shadow-sm hover:bg-blue-50"
+                >
+                  <CalendarPlus size={18} /> Xem trước giao diện đặt lịch <ArrowRight size={17} />
+                </Link>
               </div>
             </div>
           </section>
 
-          <h3 className="font-bold text-lg text-slate-800 mb-4 flex items-center gap-2">
-            <Activity className="w-5 h-5 text-[#004282]" />
-            Tiện ích dành cho người bệnh
-          </h3>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {services.map((service) => (
-              <div
-                key={service.id}
-                onClick={() => {
-                  if (service.id === 'booking') {
-                    window.location.href = '/patient/booking';
-                  } else {
-                    setActiveTab(service.id);
-                  }
-                }}
-                className="text-left bg-white border border-slate-200 rounded-2xl p-5 hover:border-blue-400 hover:shadow-md transition cursor-pointer group"
-              >
-                <div className="w-12 h-12 flex items-center justify-center rounded-xl bg-blue-50 text-[#004282] mb-4 group-hover:bg-[#004282] group-hover:text-white transition">
-                  <service.icon size={24} />
-                </div>
-                <h4 className="font-bold text-slate-900 mb-1.5 group-hover:text-[#004282] transition">
-                  {service.title}
-                </h4>
-                <p className="text-xs text-slate-500 leading-relaxed min-h-12">
-                  {service.description}
-                </p>
-                <div className="flex items-center gap-1.5 text-[#005baa] text-xs font-bold mt-4 group-hover:gap-2.5 transition-all">
-                  Truy cập ngay <ArrowRight size={14} />
-                </div>
-              </div>
-            ))}
+          <div>
+            <h3 className="mb-4 flex items-center gap-2 text-lg font-bold text-slate-800">
+              <Activity size={20} className="text-[#004282]" /> Tiện ích dành cho người bệnh
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {features.map(({ id, title, description, icon: Icon }) => (
+                id === 'booking' ? (
+                  <Link
+                    key={id}
+                    to="/patient/booking"
+                    className="group rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:border-blue-400 hover:shadow-md"
+                  >
+                    <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-[#004282]">
+                      <Icon size={24} />
+                    </div>
+                    <h4 className="font-bold text-slate-900">{title}</h4>
+                    <p className="mt-2 min-h-12 text-xs leading-relaxed text-slate-500">{description}</p>
+                    <span className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-[#005baa]">
+                      Xem giao diện <ArrowRight size={14} />
+                    </span>
+                  </Link>
+                ) : (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setActiveTab(id)}
+                    className="group rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:border-blue-400 hover:shadow-md"
+                  >
+                    <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-[#004282]">
+                      <Icon size={24} />
+                    </div>
+                    <h4 className="font-bold text-slate-900">{title}</h4>
+                    <p className="mt-2 min-h-12 text-xs leading-relaxed text-slate-500">{description}</p>
+                    <span className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-[#005baa]">
+                      Xem trạng thái tích hợp <ArrowRight size={14} />
+                    </span>
+                  </button>
+                )
+              ))}
+            </div>
           </div>
         </>
       )}
 
-      {/* TAB 2: LỊCH HẸN KHÁM CỦA TÔI */}
-      {activeTab === 'appointments' && (
-        <section className="bg-white border border-slate-200 rounded-2xl p-6 md:p-8 shadow-sm">
-          <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-6">
-            <div>
-              <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                <CalendarDays className="w-6 h-6 text-[#004282]" />
-                Lịch Hẹn Khám Bệnh Trực Tuyến
-              </h3>
-              <p className="text-xs text-slate-500 mt-1">
-                Dữ liệu được lấy trực tiếp từ API backend: <code className="bg-slate-100 px-1.5 py-0.5 rounded text-blue-700">GET /api/v1/doctor/appointments</code>
-              </p>
+      {currentFeature && (
+        <section className="rounded-2xl border border-slate-200 bg-white px-6 py-10 shadow-sm">
+          <div className="mx-auto max-w-2xl text-center">
+            <ShieldCheck size={42} className="mx-auto mb-4 text-[#004282]" />
+            <h2 className="text-xl font-bold text-slate-900">{currentFeature.title}</h2>
+            <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800">
+              <AlertCircle size={15} /> Chưa được backend hỗ trợ cho tài khoản bệnh nhân
             </div>
+            <p className="mt-4 text-sm leading-relaxed text-slate-600">{currentFeature.message}</p>
+            <p className="mt-3 text-xs text-slate-500">
+              Không có dữ liệu nào được tự tạo để thay thế kết quả từ API.
+            </p>
             <Link
-              to="/patient/booking"
-              className="bg-[#004282] text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-[#003566] transition inline-flex items-center gap-2"
+              to="/patient/profile"
+              className="mt-6 inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-semibold text-[#004282] hover:bg-blue-50"
             >
-              <CalendarPlus size={16} />
-              Đặt lịch mới
+              <UserRound size={17} /> Xem hồ sơ tài khoản
             </Link>
           </div>
-
-          {appointments.length === 0 ? (
-            <div className="text-center py-12 text-slate-400">
-              <CalendarDays className="w-12 h-12 mx-auto mb-3 text-slate-300" />
-              <p className="font-semibold text-slate-600">Hiện bạn chưa có lịch hẹn khám nào.</p>
-              <p className="text-xs mt-1">Hãy nhấn nút Đặt lịch mới bên trên để chọn chuyên khoa và phòng khám.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {appointments.map((appt, idx) => (
-                <div key={appt.appointment_id || idx} className="p-5 border border-slate-200 rounded-xl bg-slate-50/50 hover:bg-white hover:border-blue-300 hover:shadow-sm transition">
-                  <div className="flex items-start justify-between gap-3 mb-3">
-                    <div>
-                      <span className="text-xs font-bold text-blue-700 uppercase tracking-wide">
-                        {appt.specialty_name || 'Khám Đích Danh'}
-                      </span>
-                      <h4 className="font-bold text-slate-900 text-sm mt-0.5">
-                        {appt.room_name || 'Phòng khám đa khoa'}
-                      </h4>
-                    </div>
-                    <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 text-[11px] font-bold rounded-lg flex items-center gap-1">
-                      <CheckCircle2 size={12} />
-                      {appt.status || 'Đã xác nhận'}
-                    </span>
-                  </div>
-
-                  <div className="space-y-1.5 text-xs text-slate-600 border-t border-slate-200/60 pt-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-400 flex items-center gap-1.5">
-                        <Clock size={14} /> Khung giờ khám:
-                      </span>
-                      <strong className="text-slate-800">{appt.appointment_time || '14:00'} - {appt.appointment_date || '2026-11-09'}</strong>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-400">Bác sĩ phụ trách:</span>
-                      <span className="font-medium text-slate-800">{appt.doctor_name || 'Bác sĩ chuyên khoa'}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-400">Mã bệnh nhân:</span>
-                      <span className="font-mono text-slate-800">{user?.id ? `BN-2024-${String(user.id).padStart(4, '0')}` : 'BN-2024-0002'}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-      )}
-
-      {/* TAB 3: HỒ SƠ BỆNH ÁN */}
-      {activeTab === 'records' && (
-        <section className="bg-white border border-slate-200 rounded-2xl p-6 md:p-8 shadow-sm">
-          <div className="pb-4 border-b border-slate-100 mb-6">
-            <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-              <ClipboardList className="w-6 h-6 text-[#004282]" />
-              Hồ Sơ Bệnh Án Điện Tử (EMR)
-            </h3>
-            <p className="text-xs text-slate-500 mt-1">
-              Dữ liệu được lấy trực tiếp từ API backend: <code className="bg-slate-100 px-1.5 py-0.5 rounded text-blue-700">GET /api/v1/doctor/medical-records/patient/:id</code>
-            </p>
-          </div>
-
-          {records.length === 0 ? (
-            <div className="text-center py-12 text-slate-400">
-              <ClipboardList className="w-12 h-12 mx-auto mb-3 text-slate-300" />
-              <p className="font-semibold text-slate-600">Chưa có hồ sơ bệnh án nào được ghi nhận.</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {records.map((rec, idx) => (
-                <div key={rec.record_id || idx} className="p-5 border border-slate-200 rounded-xl bg-slate-50 hover:bg-white hover:border-blue-300 transition">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-bold text-slate-500">
-                      Ngày khám: <strong className="text-slate-800">{rec.visit_date || '2026-10-20'}</strong>
-                    </span>
-                    <span className="text-xs px-2.5 py-0.5 rounded-full bg-blue-100 text-[#004282] font-semibold">
-                      Mã bệnh án: #BA-{rec.record_id || idx + 1}
-                    </span>
-                  </div>
-                  <div className="space-y-2 text-xs">
-                    <div>
-                      <span className="font-bold text-slate-700">Chẩn đoán: </span>
-                      <span className="text-rose-700 font-semibold">{rec.diagnosis || 'Chưa có chẩn đoán cụ thể'}</span>
-                    </div>
-                    <div>
-                      <span className="font-bold text-slate-700">Phác đồ điều trị & Thuốc: </span>
-                      <span className="text-slate-800">{rec.treatment_plan || 'Theo dõi định kỳ'}</span>
-                    </div>
-                    {rec.doctor_notes && (
-                      <div className="bg-amber-50 border border-amber-200 p-2.5 rounded-lg text-amber-900 mt-2">
-                        <strong className="block mb-0.5">Lời dặn bác sĩ:</strong>
-                        {rec.doctor_notes}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-      )}
-
-      {/* TAB 4: KẾT QUẢ XÉT NGHIỆM */}
-      {activeTab === 'results' && (
-        <section className="bg-white border border-slate-200 rounded-2xl p-6 md:p-8 shadow-sm">
-          <div className="pb-4 border-b border-slate-100 mb-6">
-            <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-              <FlaskConical className="w-6 h-6 text-[#004282]" />
-              Kết Quả Xét Nghiệm & Chẩn Đoán Hình Ảnh
-            </h3>
-            <p className="text-xs text-slate-500 mt-1">
-              Dữ liệu được lấy trực tiếp từ API backend: <code className="bg-slate-100 px-1.5 py-0.5 rounded text-blue-700">GET /api/v1/doctor/lab-requests</code>
-            </p>
-          </div>
-
-          {labRequests.length === 0 ? (
-            <div className="text-center py-12 text-slate-400">
-              <FlaskConical className="w-12 h-12 mx-auto mb-3 text-slate-300" />
-              <p className="font-semibold text-slate-600">Chưa có chỉ định xét nghiệm nào.</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {labRequests.map((lab, idx) => (
-                <div key={lab.lab_request_id || idx} className="p-4 border border-slate-200 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-3 hover:bg-slate-50 transition">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-slate-900 text-sm">{lab.test_type || 'Xét nghiệm cận lâm sàng'}</span>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                        {lab.status || 'Đã có kết quả'}
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-600 mt-1">
-                      {lab.result || 'Đã thực hiện xong và lưu trữ trên hệ thống PACS/LIS.'}
-                    </p>
-                  </div>
-                  <div className="text-right shrink-0 text-xs text-slate-400">
-                    <div>Thời gian: {lab.created_at || '2026-10-20'}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
         </section>
       )}
     </div>

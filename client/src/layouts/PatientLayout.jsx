@@ -10,7 +10,7 @@ import {
 import { useAuth } from "../contexts/AuthContext";
 
 export default function PatientLayout() {
-  const { user, logout } = useAuth();
+  const { user, logout, isDemo, authChecking } = useAuth();
 
   const handleLogout = async () => {
     const result = await logout();
@@ -52,14 +52,24 @@ export default function PatientLayout() {
               Trang chủ
             </Link>
 
-            {user ? (
+            {/* Nút Hồ sơ cá nhân dành cho bệnh nhân */}
+            {!authChecking && user?.role === "PATIENT" && (
+              <Link
+                to="/patient/profile"
+                className="rounded-lg px-3 py-2 text-sm text-white hover:bg-white/10"
+              >
+                Hồ sơ cá nhân
+              </Link>
+            )}
+
+            {authChecking ? <span className="text-xs text-blue-100">Đang xác minh...</span> : user ? (
               <div className="flex items-center gap-2.5">
                 <div className="flex items-center gap-2 bg-white/15 px-3 py-1.5 rounded-xl border border-white/20">
-                  <img
+                  {user.avatar ? <img
                     src={user.avatar}
-                    alt={user.fullName}
+                    alt={user.fullName || user.username}
                     className="w-7 h-7 rounded-full object-cover border border-white/40"
-                  />
+                  /> : <span className="flex h-7 w-7 items-center justify-center rounded-full border border-white/40 bg-white/20 font-bold">{(user.fullName || user.username || "?").charAt(0)}</span>}
                   <div className="text-left hidden sm:block">
                     <div className="text-xs font-bold text-white leading-tight">
                       {user.fullName}
@@ -104,6 +114,7 @@ export default function PatientLayout() {
         </div>
       </header>
 
+      {isDemo && <div role="status" className="bg-amber-100 px-4 py-2 text-center text-sm font-semibold text-amber-900">CHẾ ĐỘ DEMO — Không có dữ liệu hay lịch hẹn đã lưu trên backend.</div>}
       <main className="flex-1 w-full">
         <Outlet />
       </main>

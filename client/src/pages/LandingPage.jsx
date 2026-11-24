@@ -64,6 +64,7 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans selection:bg-[#004282] selection:text-white">
+      <div role="status" className="bg-amber-100 px-4 py-2 text-center text-xs font-semibold text-amber-900">Website minh họa phục vụ học phần: danh sách bác sĩ, khoa/phòng, thông tin liên hệ, dịch vụ, BHYT và thời gian tiếp nhận chưa được hệ thống thực tế xác nhận. Không sử dụng để đặt khám hoặc liên hệ cấp cứu.</div>
       {/* =========================================================================
           1. TOP BAR - CẤP CỨU & LIÊN HỆ
       ========================================================================= */}

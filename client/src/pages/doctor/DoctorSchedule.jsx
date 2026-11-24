@@ -15,65 +15,65 @@ const DoctorSchedule = () => {
   }
 
   const schedule = [
-    { 
-      id: 1, 
-      dayOfWeek: "Thứ Hai", 
-      dateStr: "19/10/2026", 
-      shiftName: "Ca sáng", 
-      time: "07:30 - 12:00", 
-      room: "Phòng 204 - Tầng 2, Nhà A2", 
-      task: "Khám chuyên khoa Nội Tim Mạch", 
-      status: "COMPLETED", 
-      statusText: "Đã hoàn thành", 
-      isToday: false 
+    {
+      id: 1,
+      dayOfWeek: "Thứ Hai",
+      dateStr: "19/10/2026",
+      shiftName: "Ca sáng",
+      time: "07:30 - 12:00",
+      room: "Phòng 204 - Tầng 2, Nhà A2",
+      task: "Khám chuyên khoa Nội Tim Mạch",
+      status: "COMPLETED",
+      statusText: "Đã hoàn thành",
+      isToday: false
     },
-    { 
-      id: 2, 
-      dayOfWeek: "Thứ Ba", 
-      dateStr: "20/10/2026", 
-      shiftName: "Cả ngày", 
-      time: "07:30 - 16:30", 
-      room: "Phòng 204 - Tầng 2, Nhà A2", 
-      task: "Khám Tổng hợp & Tăng huyết áp", 
-      status: "IN_PROGRESS", 
-      statusText: "Đang khám", 
-      isToday: true 
+    {
+      id: 2,
+      dayOfWeek: "Thứ Ba",
+      dateStr: "20/10/2026",
+      shiftName: "Cả ngày",
+      time: "07:30 - 16:30",
+      room: "Phòng 204 - Tầng 2, Nhà A2",
+      task: "Khám Tổng hợp & Tăng huyết áp",
+      status: "IN_PROGRESS",
+      statusText: "Đang khám",
+      isToday: false
     },
-    { 
-      id: 3, 
-      dayOfWeek: "Thứ Tư", 
-      dateStr: "21/10/2026", 
-      shiftName: "Ca chiều", 
-      time: "13:30 - 17:00", 
-      room: "Phòng Hội chẩn - Tầng 5, Nhà A1", 
-      task: "Hội chẩn ca bệnh tim mạch nặng liên viện", 
-      status: "UPCOMING", 
-      statusText: "Sắp tới", 
-      isToday: false 
+    {
+      id: 3,
+      dayOfWeek: "Thứ Tư",
+      dateStr: "21/10/2026",
+      shiftName: "Ca chiều",
+      time: "13:30 - 17:00",
+      room: "Phòng Hội chẩn - Tầng 5, Nhà A1",
+      task: "Hội chẩn ca bệnh tim mạch nặng liên viện",
+      status: "UPCOMING",
+      statusText: "Sắp tới",
+      isToday: false
     },
-    { 
-      id: 4, 
-      dayOfWeek: "Thứ Năm", 
-      dateStr: "22/10/2026", 
-      shiftName: "Ca sáng", 
-      time: "07:30 - 12:00", 
-      room: "Phòng 204 - Tầng 2, Nhà A2", 
-      task: "Khám chuyên gia theo yêu cầu", 
-      status: "UPCOMING", 
-      statusText: "Sắp tới", 
-      isToday: false 
+    {
+      id: 4,
+      dayOfWeek: "Thứ Năm",
+      dateStr: "22/10/2026",
+      shiftName: "Ca sáng",
+      time: "07:30 - 12:00",
+      room: "Phòng 204 - Tầng 2, Nhà A2",
+      task: "Khám chuyên gia theo yêu cầu",
+      status: "UPCOMING",
+      statusText: "Sắp tới",
+      isToday: false
     },
-    { 
-      id: 5, 
-      dayOfWeek: "Thứ Sáu", 
-      dateStr: "23/10/2026", 
-      shiftName: "Ca sáng", 
-      time: "07:30 - 12:00", 
-      room: "Giảng đường B3 - ĐHYHN", 
-      task: "Giảng dạy lâm sàng sinh viên Y5 - Module Tim mạch", 
-      status: "UPCOMING", 
-      statusText: "Sắp tới", 
-      isToday: false 
+    {
+      id: 5,
+      dayOfWeek: "Thứ Sáu",
+      dateStr: "23/10/2026",
+      shiftName: "Ca sáng",
+      time: "07:30 - 12:00",
+      room: "Giảng đường B3 - ĐHYHN",
+      task: "Giảng dạy lâm sàng sinh viên Y5 - Module Tim mạch",
+      status: "UPCOMING",
+      statusText: "Sắp tới",
+      isToday: false
     },
   ];
 
@@ -83,14 +83,13 @@ const DoctorSchedule = () => {
   });
 
   const handleOpenExchange = (shift) => {
-    setSelectedShift(shift);
-    setExchangeModalOpen(true);
+    window.alert("Chỉ là lịch minh họa. Backend chưa có API gửi yêu cầu đổi ca.");
   };
 
   const handleSubmitExchange = (e) => {
     e.preventDefault();
     setExchangeModalOpen(false);
-    setExchangeSuccess(true);
+    setExchangeSuccess(false);
     setTimeout(() => setExchangeSuccess(false), 3000);
   };
 
@@ -120,11 +119,12 @@ const DoctorSchedule = () => {
 
   return (
     <div className="space-y-4 max-w-7xl mx-auto">
+      <div role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">Lịch trực dưới đây là dữ liệu minh họa từ tháng 10/2026, không phải lịch trực hiện tại. Chưa có API lịch trực/đổi ca; thao tác đổi ca chưa được ghi lên hệ thống.</div>
       {/* Toast thông báo */}
       {exchangeSuccess && (
         <div className="fixed top-4 right-4 z-50 bg-slate-900 text-white text-xs px-4 py-3 rounded border border-slate-700 shadow-md flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-          <span>Đã gửi yêu cầu đổi ca trực lâm sàng thành công. Chờ lãnh đạo duyệt.</span>
+          <span>Đây chỉ là lịch minh họa. Không gửi yêu cầu đổi ca.</span>
         </div>
       )}
 
@@ -146,7 +146,7 @@ const DoctorSchedule = () => {
 
         <div className="flex items-center gap-2 shrink-0">
           <button
-            onClick={() => window.print()}
+            onClick={() => window.alert("Chưa thể in lịch trực thật: đây là dữ liệu minh họa, chưa kết nối API lịch trực.")}
             className="px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 rounded text-xs font-medium flex items-center gap-1.5 transition"
           >
             <Printer className="w-3.5 h-3.5" />
@@ -202,8 +202,8 @@ const DoctorSchedule = () => {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filtered.map((item) => (
-                <tr 
-                  key={item.id} 
+                <tr
+                  key={item.id}
                   className={`hover:bg-slate-50/80 transition ${
                     item.isToday ? 'bg-blue-50/30' : ''
                   }`}
@@ -267,7 +267,7 @@ const DoctorSchedule = () => {
                 <ArrowRightLeft className="w-4 h-4 text-slate-600" />
                 Đề xuất đổi ca trực lâm sàng
               </h3>
-              <button 
+              <button
                 onClick={() => setExchangeModalOpen(false)}
                 className="text-slate-500 hover:text-slate-800 text-sm font-bold p-1"
               >
@@ -299,10 +299,10 @@ const DoctorSchedule = () => {
                 <label className="block font-semibold text-slate-700 mb-1">
                   Lý do xin đổi ca trực:
                 </label>
-                <textarea 
-                  rows={3} 
+                <textarea
+                  rows={3}
                   required
-                  placeholder="Nhập lý do đổi ca (công tác giảng dạy, hội chẩn liên viện, việc đột xuất...)" 
+                  placeholder="Nhập lý do đổi ca (công tác giảng dạy, hội chẩn liên viện, việc đột xuất...)"
                   className="w-full border border-slate-300 rounded p-2 text-slate-800 focus:outline-none focus:border-slate-500"
                 />
               </div>

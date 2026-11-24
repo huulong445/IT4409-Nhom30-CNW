@@ -25,7 +25,7 @@ const Header = () => {
 
     if (role === "ADMIN") {
       navigate("/admin");
-    } else if (role === "PARACLINICAL") {
+    } else if ((role === "PARACLINICAL" || role === "LAB_TECH")) {
       navigate("/paraclinical");
     } else {
       navigate("/doctor");
@@ -80,9 +80,9 @@ const Header = () => {
                 BS Lâm sàng
               </button>
               <button
-                onClick={() => handleRoleChange("PARACLINICAL")}
+                onClick={() => handleRoleChange("LAB_TECH")}
                 className={`px-2.5 py-1 rounded flex items-center gap-1 transition-all ${
-                  user.role === "PARACLINICAL"
+                  (user.role === "PARACLINICAL" || user.role === "LAB_TECH")
                     ? "bg-white text-[#004282] font-semibold shadow-sm"
                     : "text-blue-200 hover:text-white"
                 }`}
@@ -115,7 +115,7 @@ const Header = () => {
           to={
             user.role === "ADMIN"
               ? "/admin"
-              : user.role === "PARACLINICAL"
+              : (user.role === "PARACLINICAL" || user.role === "LAB_TECH")
                 ? "/paraclinical"
                 : "/doctor"
           }
@@ -137,7 +137,7 @@ const Header = () => {
             <p className="text-xs text-blue-200 font-medium tracking-wide">
               {user.role === "ADMIN"
                 ? "Hệ thống Quản trị & Điều hành Bệnh viện (Admin Portal)"
-                : user.role === "PARACLINICAL"
+                : (user.role === "PARACLINICAL" || user.role === "LAB_TECH")
                   ? `Khu vực Cận lâm sàng • ${user.specialty}`
                   : `Phòng khám Bác sĩ Lâm sàng • ${user.specialty}`}
             </p>
@@ -147,36 +147,46 @@ const Header = () => {
         {/* User Profile & Actions */}
         <div className="flex items-center gap-3">
           {/* Notification Button */}
-          <button
-            className="relative p-2 rounded-full hover:bg-blue-800/60 transition text-blue-200 hover:text-white"
-            title="Thông báo hệ thống"
-          >
+          <span className="p-2 text-blue-200" title="Thông báo hệ thống: chưa tích hợp API">
             <Bell className="w-5 h-5" />
-            <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-[#004282]"></span>
-          </button>
+          </span>
 
           {/* User info card */}
           <div className="flex items-center gap-3 pl-3 border-l border-blue-700/60">
-            <img
+            {user.avatar ? <img
               src={user.avatar}
-              alt={user.fullName}
+              alt={user.fullName || user.username}
               className="w-9 h-9 rounded-full object-cover border-2 border-white shadow-sm"
-            />
+            /> : <div className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-white bg-white/20 font-bold text-white">{(user.fullName || user.username || "?").charAt(0)}</div>}
             <div className="hidden md:block text-left">
               <div className="text-sm font-semibold text-white leading-tight flex items-center gap-1.5">
                 {user.fullName}
                 {user.role === "DOCTOR" && (
                   <span
-                    className="w-2 h-2 rounded-full bg-emerald-400"
-                    title="Đang trực"
+                    className="w-2 h-2 rounded-full bg-slate-300"
+                    title="Bác sĩ"
                   ></span>
                 )}
               </div>
               <div className="text-xs text-blue-200 truncate max-w-[220px]">
-                {user.departmentName}
+                {user.departmentName || "Chưa có khoa"}
                 {user.room && ` • ${user.room}`}
               </div>
             </div>
+
+      <Link
+        to={
+          user.role === "ADMIN"
+            ? "/admin/profile"
+            : user.role === "DOCTOR"
+            ? "/doctor/profile"
+            : "/paraclinical/profile"
+        }
+        className="flex items-center gap-1.5 rounded-lg border border-blue-700 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-800"
+      >
+        <User size={16} />
+        Hồ sơ
+      </Link>
 
             {/* Logout button */}
             <button
