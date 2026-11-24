@@ -46,7 +46,7 @@ const ParaclinicalSchedule = () => {
       technicians: "KTV. Phạm Quốc Hưng, KTV. Lê Thị Kim",
       status: "IN_PROGRESS",
       statusText: "Đang trực",
-      isToday: true,
+      isToday: false,
     },
     {
       id: 3,
@@ -117,14 +117,13 @@ const ParaclinicalSchedule = () => {
   });
 
   const handleOpenExchange = (shift) => {
-    setSelectedShift(shift);
-    setExchangeModalOpen(true);
+    window.alert("Chỉ là lịch minh họa. Backend chưa có API gửi yêu cầu đổi ca.");
   };
 
   const handleSubmitExchange = (e) => {
     e.preventDefault();
     setExchangeModalOpen(false);
-    setExchangeSuccess(true);
+    setExchangeSuccess(false);
     setTimeout(() => setExchangeSuccess(false), 3000);
   };
 
@@ -154,11 +153,12 @@ const ParaclinicalSchedule = () => {
 
   return (
     <div className="space-y-4 max-w-7xl mx-auto">
+      <div role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">Lịch trực dưới đây là dữ liệu minh họa từ tháng 10/2026, không phải lịch trực hiện tại. Chưa có API lịch trực/đổi ca; thao tác đổi ca chưa được ghi lên hệ thống.</div>
       {/* Toast thông báo */}
       {exchangeSuccess && (
         <div className="fixed top-4 right-4 z-50 bg-slate-900 text-white text-xs px-4 py-3 rounded border border-slate-700 shadow-md flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-          <span>Đã gửi yêu cầu đổi ca trực thành công. Chờ lãnh đạo duyệt.</span>
+          <span>Đây chỉ là lịch minh họa. Không gửi yêu cầu đổi ca.</span>
         </div>
       )}
 
@@ -180,7 +180,7 @@ const ParaclinicalSchedule = () => {
 
         <div className="flex items-center gap-2 shrink-0">
           <button
-            onClick={() => window.print()}
+            onClick={() => window.alert("Chưa thể in lịch trực thật: đây là dữ liệu minh họa, chưa kết nối API lịch trực.")}
             className="px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 rounded text-xs font-medium flex items-center gap-1.5 transition"
           >
             <Printer className="w-3.5 h-3.5" />

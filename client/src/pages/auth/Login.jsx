@@ -46,11 +46,11 @@ const Login = () => {
     if (redirectUrl) newParams.redirect = redirectUrl;
     setSearchParams(newParams);
     if (mode === 'PATIENT') {
-      setIdentifier('0912345678');
-      setPassword('123');
+      setIdentifier('');
+      setPassword('');
     } else {
-      setIdentifier('bs_trung');
-      setPassword('123');
+      setIdentifier('');
+      setPassword('');
     }
   };
 
@@ -68,7 +68,7 @@ const Login = () => {
       navigate('/patient');
     } else if (userObj.role === 'ADMIN') {
       navigate('/admin');
-    } else if (userObj.role === 'PARACLINICAL') {
+    } else if ((userObj.role === 'PARACLINICAL' || userObj.role === 'LAB_TECH')) {
       navigate('/paraclinical');
     } else if (userObj.role === 'DOCTOR') {
       navigate('/doctor');
@@ -84,7 +84,7 @@ const Login = () => {
     if (!identifier.trim()) {
       setErrorMessage(
         loginMode === 'PATIENT'
-          ? 'Vui lòng nhập số điện thoại hoặc số CCCD của bạn.'
+          ? 'Vui lòng nhập username đã đăng ký (API chưa hỗ trợ đăng nhập bằng số điện thoại).'
           : 'Vui lòng nhập tên đăng nhập nội bộ (Username).'
       );
       return;
@@ -99,10 +99,12 @@ const Login = () => {
   };
 
   const handleQuickLogin = async (userItem) => {
-    await loginAs(userItem);
-    redirectAfterLogin(userItem);
+    const result = await loginAs(userItem);
+    if (result.success) redirectAfterLogin(result.user);
+    else setErrorMessage(result.message || "Không thể mở chế độ demo.");
   };
 
+  // Danh sách minh họa chỉ được cung cấp trong Vite DEV, không dùng để xác thực thật.
   // Staff lists
   const clinicalDoctors = usersList.filter(u => u.doctorType === 'CLINICAL');
   const paraclinicalDoctors = usersList.filter(u => u.doctorType === 'PARACLINICAL');
@@ -365,7 +367,7 @@ const Login = () => {
                       <h4 className="font-bold text-sm text-slate-800 group-hover:text-[#004282]">
                         Nguyễn Thị Mai Lan
                       </h4>
-                      <p className="text-xs text-slate-500">SĐT: 0912 345 678 • Mã BN: BN-2024-0089</p>
+                      <p className="text-xs text-slate-500">Tài khoản minh họa — không phải hồ sơ bệnh nhân thật</p>
                     </div>
                   </div>
                   <span className="px-3 py-1.5 rounded-lg bg-[#004282] text-white text-xs font-semibold">
@@ -384,6 +386,7 @@ const Login = () => {
           ) : (
             /* Danh sách tài khoản mẫu cán bộ y tế */
             <div>
+              {import.meta.env.DEV && <p role="status" className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-900">Tài khoản demo chỉ để xem trước giao diện. Không tạo JWT, không xác thực với backend và không đại diện cho bác sĩ/bệnh nhân thật.</p>}
               {/* Category selector */}
               <div className="flex gap-1.5 mb-4 border-b border-slate-200 pb-2">
                 {[

@@ -1,19 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
-import api from '../../services/api';
 import {
   CalendarDays,
   Clock3,
   Stethoscope,
   Building2,
-  CheckCircle2,
   UserCheck,
   ArrowLeft,
   Search,
   ChevronUp,
   ChevronDown,
-  AlertCircle,
-  QrCode
+  AlertCircle
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -169,8 +166,9 @@ export const BOOKING_SPECIALTIES = [
   }
 ];
 
-const today = () => {
+const today = (offsetDays = 0) => {
   const now = new Date();
+  now.setDate(now.getDate() + offsetDays);
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, '0');
   const day = String(now.getDate()).padStart(2, '0');
@@ -180,19 +178,13 @@ const today = () => {
 export default function PatientBooking() {
   const { user } = useAuth();
 
-  // Bắt buộc đăng nhập tài khoản Người bệnh mới được đặt lịch
-  if (!user) {
-    return <Navigate to="/login?role=patient&redirect=/patient/booking" replace />;
-  }
-
   const [searchSpecialty, setSearchSpecialty] = useState('');
   const [selectedSpecialtyId, setSelectedSpecialtyId] = useState('Y_HOC_CO_TRUYEN');
-  const [selectedDate, setSelectedDate] = useState(today());
+  const [selectedDate, setSelectedDate] = useState(today(1));
   const [selectedClinicId, setSelectedClinicId] = useState('YHCT_P311');
   const [selectedTimeSlot, setSelectedTimeSlot] = useState('13:30');
   const [isAreaExpanded, setIsAreaExpanded] = useState(true);
   const [confirmed, setConfirmed] = useState(false);
-  const [ticketCode, setTicketCode] = useState('');
 
   // Lọc chuyên khoa theo từ khóa tìm kiếm (theo tên hoặc triệu chứng)
   const filteredSpecialties = BOOKING_SPECIALTIES.filter(spec => {
@@ -231,36 +223,28 @@ export default function PatientBooking() {
     setConfirmed(false);
   };
 
-  useEffect(() => {
-    // Tải trước danh sách ca khám từ backend (cần doctor_id và date theo đúng quy định của API backend)
-    api.get(`/doctor/appointments?doctor_id=1&date=${selectedDate}`).catch(err => {
-      console.warn('Backend appointments query:', err.message);
-    });
-  }, [selectedDate]);
-
-  const handleConfirmBooking = async (e) => {
+  // Chỉ xem bản nháp, tuyệt đối không xác nhận đã tạo lịch hẹn.
+  const handlePreviewBooking = (e) => {
     e.preventDefault();
-    if (!selectedSpecialty || !selectedClinic || !selectedTimeSlot || !selectedDate) {
-      alert('Vui lòng chọn đầy đủ chuyên khoa, ngày khám, phòng khám và khung giờ!');
+    if (!selectedSpecialty || !selectedClinic || !selectedTimeSlot ||
+        !selectedDate || selectedDate < today(1) || selectedDate > today(7)) {
+      window.alert('Vui lòng chọn chuyên khoa, phòng khám, khung giờ và ngày trong 1–7 ngày tới.');
       return;
     }
-
-    try {
-      // Gửi request kiểm tra tới backend
-      await api.get(`/doctor/appointments?doctor_id=1&date=${selectedDate}`).catch(() => null);
-    } catch (err) {
-      console.warn('Lỗi gọi API đặt lịch:', err.message);
-    }
-
-    const randomCode = 'BKH-' + Math.floor(100000 + Math.random() * 900000);
-    setTicketCode(randomCode);
     setConfirmed(true);
   };
 
   const handleResetBooking = () => {
     setConfirmed(false);
-    setTicketCode('');
   };
+
+  // React hooks must run in the same order for every render.
+  if (!user) {
+    return <Navigate to="/login?role=patient&redirect=/patient/booking" replace />;
+  }
+  if (String(user.role).toUpperCase() !== 'PATIENT') {
+    return <div className="max-w-2xl mx-auto p-8 text-amber-800">Chức năng này dành cho tài khoản bệnh nhân.</div>;
+  }
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
@@ -274,32 +258,37 @@ export default function PatientBooking() {
           Quay lại Cổng Người Bệnh
         </Link>
         <span className="text-xs text-slate-500 bg-white px-3 py-1.5 rounded-lg border border-slate-200">
-          Đặt khám trực tuyến 24/7
+          Chọn lịch tham khảo · Chưa mở đặt lịch
         </span>
       </div>
 
       <div className="mb-6">
         <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
-          Đặt Lịch Khám Theo Chuyên Khoa
+          Lựa Chọn Lịch Khám Theo Chuyên Khoa
         </h1>
         <p className="text-slate-500 text-sm mt-1">
-          Lựa chọn chuyên khoa theo triệu chứng sức khỏe, sau đó chọn phòng khám và khung giờ phù hợp.
+          Xem trước lựa chọn chuyên khoa, phòng khám và khung giờ tham khảo. Chưa tạo lịch hẹn trên hệ thống.
         </p>
       </div>
 
+      <div role="status" className="mb-6 flex gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+        <AlertCircle className="h-5 w-5 shrink-0" />
+        <p><strong>Chức năng đặt lịch đang chờ backend.</strong> Danh sách phòng khám và khung giờ là dữ liệu giao diện minh họa, không phải lịch trống đã được kiểm chứng. Không có thông tin nào được gửi hoặc đặt chỗ.</p>
+      </div>
+
       {confirmed ? (
-        /* =================== MÀN HÌNH XÁC NHẬN ĐẶT LỊCH THÀNH CÔNG =================== */
+        /* =================== BẢN XEM TRƯỚC, CHƯA ĐẶT LỊCH =================== */
         <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-10 max-w-2xl mx-auto text-center shadow-xl space-y-6 animate-fade-in">
-          <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto shadow-inner">
-            <CheckCircle2 className="w-10 h-10" />
+          <div className="w-16 h-16 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mx-auto shadow-inner">
+            <AlertCircle className="w-10 h-10" />
           </div>
 
           <div>
             <h2 className="text-2xl font-black text-slate-900">
-              Đặt Lịch Khám Thành Công!
+              Bản Xem Trước Yêu Cầu Đặt Lịch
             </h2>
             <p className="text-sm text-slate-600 mt-1">
-              Hệ thống Bệnh viện Bách Khoa đã tiếp nhận lịch hẹn của người bệnh.
+              Chưa gửi yêu cầu, chưa được xác nhận và chưa có lịch hẹn nào được tạo.
             </p>
           </div>
 
@@ -308,14 +297,14 @@ export default function PatientBooking() {
             <div className="flex items-start justify-between gap-4 border-b border-emerald-200/80 pb-4 mb-4">
               <div>
                 <span className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider bg-emerald-100/80 px-2 py-0.5 rounded">
-                  Phiếu Hẹn Khám Trực Tuyến
+                  Bản Nháp Thông Tin Đặt Khám
                 </span>
-                <div className="text-2xl font-black text-[#0c5936] tracking-wider mt-1.5">
-                  {ticketCode}
+                <div className="text-lg font-black text-amber-800 tracking-wider mt-1.5">
+                  CHƯA CÓ MÃ LỊCH HẸN
                 </div>
               </div>
-              <div className="p-2 bg-white rounded-xl shadow-sm border border-emerald-100 text-slate-800">
-                <QrCode className="w-12 h-12 text-[#0c5936]" />
+              <div className="p-2 bg-amber-100 rounded-xl text-amber-800">
+                <AlertCircle className="w-9 h-9" />
               </div>
             </div>
 
@@ -326,7 +315,7 @@ export default function PatientBooking() {
               </div>
               <div>
                 <span className="text-slate-500 block">Mã bệnh nhân:</span>
-                <span className="font-mono font-bold text-slate-900">{user.patientId || 'BN-2024-0089'}</span>
+                <span className="font-mono font-bold text-slate-900">{user.patient_id ?? user.patientId ?? 'Chưa có'}</span>
               </div>
               <div>
                 <span className="text-slate-500 block">Chuyên khoa:</span>
@@ -342,7 +331,7 @@ export default function PatientBooking() {
                 <p className="text-[11px] text-slate-500 mt-0.5">{selectedSpecialty?.area} • {selectedClinic?.location}</p>
               </div>
               <div className="sm:col-span-2 p-2.5 bg-white rounded-xl border border-emerald-200 flex items-center justify-between">
-                <span className="font-semibold text-slate-700">Khung giờ khám dự kiến:</span>
+                <span className="font-semibold text-slate-700">Khung giờ đã chọn (tham khảo):</span>
                 <span className="text-base font-black text-[#0c5936] px-3 py-1 bg-emerald-100 rounded-lg">
                   {selectedTimeSlot}
                 </span>
@@ -352,7 +341,7 @@ export default function PatientBooking() {
             <div className="mt-4 pt-3 border-t border-emerald-200 text-[11px] text-emerald-900 flex items-start gap-2">
               <AlertCircle className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
               <span>
-                Quý khách vui lòng đến bệnh viện trước khung giờ hẹn <strong>15 phút</strong> và quét mã QR tại Kiosk sảnh tiếp đón để nhận số thứ tự vào phòng khám.
+                Đây chỉ là bản xem trước trên trình duyệt. Không sử dụng bản này để đến khám hoặc nhận số thứ tự. Cần backend cung cấp API đặt lịch và xác nhận hợp lệ.
               </span>
             </div>
           </div>
@@ -362,7 +351,7 @@ export default function PatientBooking() {
               onClick={handleResetBooking}
               className="px-6 py-2.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition"
             >
-              Đặt lịch khám khác
+              Chỉnh sửa lựa chọn
             </button>
             <Link
               to="/patient"
@@ -383,23 +372,24 @@ export default function PatientBooking() {
                 <CalendarDays className="w-5 h-5 text-[#004282]" />
                 <div>
                   <h3 className="font-bold text-slate-800 text-sm">Chọn ngày khám</h3>
-                  <p className="text-xs text-slate-500">Đặt trước từ 1 - 7 ngày</p>
+                  <p className="text-xs text-slate-500">Chọn ngày tham khảo từ 1–7 ngày tới</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 <input
                   type="date"
-                  min={today()}
+                  min={today(1)}
+                  max={today(7)}
                   value={selectedDate}
                   onChange={(e) => setSelectedDate(e.target.value)}
                   className="border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-[#004282]"
                 />
                 <button
                   type="button"
-                  onClick={() => setSelectedDate(today())}
+                  onClick={() => setSelectedDate(today(1))}
                   className="px-2.5 py-2 text-xs font-semibold rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition"
                 >
-                  Hôm nay
+                  Ngày mai
                 </button>
               </div>
             </div>
@@ -548,11 +538,11 @@ export default function PatientBooking() {
                   <div className="font-bold text-slate-900 text-sm">{user.fullName}</div>
                   <div className="text-slate-600 flex items-center justify-between">
                     <span>Mã BN:</span>
-                    <strong className="font-mono text-slate-800">{user.patientId || 'BN-2024-0089'}</strong>
+                    <strong className="font-mono text-slate-800">{user.patient_id ?? user.patientId ?? 'Chưa có'}</strong>
                   </div>
                   <div className="text-slate-600 flex items-center justify-between">
                     <span>Số điện thoại:</span>
-                    <strong className="text-slate-800">{user.phone || '0912 345 678'}</strong>
+                    <strong className="text-slate-800">{user.phone || 'Chưa cập nhật'}</strong>
                   </div>
                 </div>
               </div>
@@ -602,16 +592,16 @@ export default function PatientBooking() {
               {/* Nút gửi đặt lịch */}
               <button
                 type="button"
-                onClick={handleConfirmBooking}
-                disabled={!selectedTimeSlot}
+                onClick={handlePreviewBooking}
+                disabled={!selectedTimeSlot || selectedDate < today(1) || selectedDate > today(7)}
                 className="w-full bg-[#0c5936] hover:bg-[#0a482b] disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold py-3.5 px-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 text-sm"
               >
                 <Clock3 className="w-4 h-4" />
-                Xác Nhận Đặt Lịch
+                Xem bản nháp (chưa gửi)
               </button>
 
               <p className="text-[11px] text-slate-400 text-center leading-tight">
-                Không thu phí đặt hẹn trực tuyến. Người bệnh thanh toán viện phí tại quầy tiếp đón sau khi khám.
+                Các khung giờ minh họa không phản ánh khả năng đặt chỗ thực tế. Chưa có yêu cầu nào được gửi.
               </p>
             </div>
           </div>

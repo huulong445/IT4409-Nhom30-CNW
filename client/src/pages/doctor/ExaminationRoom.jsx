@@ -1,56 +1,58 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../../services/api';
-import { 
-  MOCK_QUEUE, 
-  MOCK_ICD10_LIST, 
-  MOCK_COMMON_MEDICATIONS, 
-  MOCK_LAB_TESTS 
+import { useAuth } from "../../contexts/AuthContext";
+import {
+  MOCK_ICD10_LIST,
+  MOCK_COMMON_MEDICATIONS,
+  MOCK_LAB_TESTS
 } from '../../services/mockData';
-import { 
-  ArrowLeft, 
-  Save, 
-  Printer, 
-  Pill, 
-  FlaskConical, 
-  AlertTriangle, 
-  CheckCircle2, 
-  Activity, 
-  User, 
-  FileText, 
-  Plus, 
-  Trash2, 
+import {
+  ArrowLeft,
+  Save,
+  Printer,
+  Pill,
+  FlaskConical,
+  AlertTriangle,
+  CheckCircle2,
+  Activity,
+  User,
+  FileText,
+  Plus,
+  Trash2,
   Search,
   Clock,
   ShieldCheck,
-  Stethoscope,
-  Eye
+  Stethoscope
 } from 'lucide-react';
-import LabResultModal from '../../components/LabResultModal';
 
 const ExaminationRoom = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  
-  // Lấy bệnh nhân từ navigation state hoặc mặc định là bệnh nhân số 1
-  const initialPatient = location.state?.patient || MOCK_QUEUE[0];
+  const { user } = useAuth();
+
+  // Chỉ lấy bệnh nhân từ navigation state; không tự chọn hồ sơ mẫu
+  const initialPatient = location.state?.patient ?? {};
   const [patient, setPatient] = useState(initialPatient);
 
   // Vital signs state
   const [vitals, setVitals] = useState({
-    bpSystolic: 135,
-    bpDiastolic: 85,
-    heartRate: 78,
-    temperature: 36.8,
-    spo2: 98,
-    weight: 62,
-    height: 165
+    bpSystolic: "",
+    bpDiastolic: "",
+    heartRate: "",
+    temperature: "",
+    spo2: "",
+    weight: "",
+    height: ""
   });
 
   // Calculate BMI
-  const heightInMeters = (vitals.height || 165) / 100;
-  const bmi = (vitals.weight / (heightInMeters * heightInMeters)).toFixed(1);
+  const heightInMeters = Number(vitals.height) / 100;
+  const bmi = Number(vitals.weight) > 0 && heightInMeters > 0
+    ? (Number(vitals.weight) / (heightInMeters * heightInMeters)).toFixed(1)
+    : "—";
   const getBmiStatus = (bmiValue) => {
+    if (!Number.isFinite(bmiValue)) return { label: "Chưa có dữ liệu", color: "text-slate-400" };
     if (bmiValue < 18.5) return { label: 'Thiếu cân', color: 'text-amber-600' };
     if (bmiValue < 23) return { label: 'Bình thường (Chuẩn IDI & WPRO)', color: 'text-emerald-600 font-semibold' };
     if (bmiValue < 25) return { label: 'Tiền béo phì', color: 'text-amber-600 font-semibold' };
@@ -63,59 +65,52 @@ const ExaminationRoom = () => {
       ? `Dị ứng: ${patient.allergies}. Tiền sử: ${patient.medicalHistory || 'Không có'}`
       : (patient.medicalHistory ? `Tiền sử bệnh: ${patient.medicalHistory}` : '')
   );
-  const [symptoms, setSymptoms] = useState(patient.reason || '');
-  const [examNotes, setExamNotes] = useState('Tim đều, T1-T2 rõ, không nghe tiếng thổi bệnh lý. Phổi thông khí tốt, không rale. Bụng mềm, gan lách không sờ chạm.');
-  const [selectedIcd, setSelectedIcd] = useState('I10');
-  const [diagnosisDetails, setDiagnosisDetails] = useState('Tăng huyết áp độ 1 - Nguy cơ tim mạch trung bình / Rối loạn lipid máu');
-  const [doctorAdvice, setDoctorAdvice] = useState('Hạn chế ăn mặn (< 5g muối/ngày), giảm chất béo động vật. Tập thể dục đi bộ nhẹ nhàng 30 phút/ngày. Tái khám sau 1 tháng hoặc khi có đau ngực dữ dội.');
+  const [symptoms, setSymptoms] = useState('');
+  const [examNotes, setExamNotes] = useState('');
+  const [selectedIcd, setSelectedIcd] = useState('');
+  const [diagnosisDetails, setDiagnosisDetails] = useState('');
+  const [doctorAdvice, setDoctorAdvice] = useState('');
 
   // Prescriptions list
-  const [prescriptions, setPrescriptions] = useState([
-    {
-      id: 1,
-      name: "Amlodipine 5mg",
-      quantity: 30,
-      unit: "Viên",
-      dosage: "1 viên/lần",
-      frequency: "Sáng 1 viên sau ăn",
-      duration: "30 ngày"
-    },
-    {
-      id: 2,
-      name: "Atorvastatin 20mg",
-      quantity: 30,
-      unit: "Viên",
-      dosage: "1 viên/lần",
-      frequency: "Tối 1 viên trước khi ngủ",
-      duration: "30 ngày"
-    }
-  ]);
+  const [prescriptions, setPrescriptions] = useState([]);
 
   // Lab orders list
-  const [labOrders, setLabOrders] = useState([
-    { id: 1, code: "XN-HH-01", name: "Tổng phân tích tế bào máu ngoại vi (24 thông số)", price: 95000, status: "Đã có kết quả: Bình thường" },
-    { id: 6, code: "CDHA-ECG", name: "Điện tâm đồ thông thường (ECG 12 chuyển đạo)", price: 80000, status: "Đã có kết quả: Nhịp xoang 78ck/p" }
-  ]);
+  const [labOrders, setLabOrders] = useState([]);
 
   // Modals
   const [showMedModal, setShowMedModal] = useState(false);
   const [showLabModal, setShowLabModal] = useState(false);
-  const [selectedLabForView, setSelectedLabForView] = useState(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [recordId, setRecordId] = useState(null);
+  const [recordLookupState, setRecordLookupState] = useState("idle");
+  const [recordRefreshKey, setRecordRefreshKey] = useState(0);
+  const [existingLabRequests, setExistingLabRequests] = useState([]);
+  const [labListStatus, setLabListStatus] = useState("idle");
+  const [labRefreshKey, setLabRefreshKey] = useState(0);
+  const [isSendingLabs, setIsSendingLabs] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [saveError, setSaveError] = useState("");
 
   // New medication form inside modal
   const [newMed, setNewMed] = useState({
-    name: "Losartan Potassium 50mg",
-    quantity: 30,
-    unit: "Viên",
-    dosage: "1 viên",
-    frequency: "Uống 1 viên vào 08h sáng sau ăn",
-    duration: "30 ngày"
+    name: "",
+    quantity: 1,
+    unit: "",
+    dosage: "",
+    frequency: "",
+    duration: ""
   });
 
   const handleAddMedication = () => {
-    setPrescriptions([...prescriptions, { ...newMed, id: Date.now() }]);
+    if (!newMed.name.trim() || !Number.isInteger(Number(newMed.quantity)) ||
+        Number(newMed.quantity) <= 0 || !newMed.frequency.trim()) {
+      setSaveError("Hãy chọn thuốc, nhập số lượng và hướng dẫn sử dụng hợp lệ.");
+      return;
+    }
+    setPrescriptions(current => [...current, { ...newMed, id: Date.now() }]);
     setShowMedModal(false);
+    setSaveError("");
   };
 
   const handleRemoveMedication = (id) => {
@@ -123,81 +118,351 @@ const ExaminationRoom = () => {
   };
 
   const handleToggleLab = (test) => {
-    if (labOrders.some(l => l.id === test.id)) {
-      setLabOrders(labOrders.filter(l => l.id !== test.id));
-    } else {
-      setLabOrders([...labOrders, { ...test, status: "Chờ thực hiện" }]);
+    const alreadySaved = existingLabRequests.some(req =>
+      String(req.test_type || "").trim().toLowerCase() ===
+      String(test.name || "").trim().toLowerCase()
+    );
+    if (alreadySaved) {
+      setSaveError("Xét nghiệm này đã có chỉ định trên hệ thống. Hãy tải lại danh sách trước khi thêm.");
+      return;
     }
+    setLabOrders(current => current.some(item => item.id === test.id)
+      ? current.filter(item => item.id !== test.id)
+      : [...current, { ...test, status: "Chưa gửi" }]
+    );
+    setSaveError("");
   };
 
   const [toastMessage, setToastMessage] = useState('');
 
-  // Gọi API lấy hồ sơ tiền sử bệnh nhân khi mở phòng khám
+  const patientIdForLookup = Number(patient?.id);
+  const appointmentIdForLookup = Number(patient?.appointmentId);
+
+  // Tìm bệnh án của đúng lịch hẹn; không được dùng patient_id thay record_id.
   useEffect(() => {
-    if (patient?.id) {
-      api.get(`/doctor/medical-records/patient/${patient.id}`).catch(err => {
-        console.warn('Lỗi gọi /doctor/medical-records/patient:', err.message);
-      });
+    let cancelled = false;
+    setRecordLookupState("loading");
+    setRecordId(null);
+    setExistingLabRequests([]);
+    setLabListStatus("idle");
+
+    if (!Number.isInteger(patientIdForLookup) || patientIdForLookup <= 0 ||
+        !Number.isInteger(appointmentIdForLookup) || appointmentIdForLookup <= 0) {
+      setRecordLookupState("error");
+      setSaveError("Thiếu patient_id hoặc appointment_id hợp lệ để xác định bệnh án.");
+      return () => { cancelled = true; };
     }
-  }, [patient]);
+
+    api.get(`/doctor/medical-records/patient/${patientIdForLookup}`)
+      .then(res => {
+        if (!res.data?.success || !Array.isArray(res.data?.data)) {
+          throw new Error(res.data?.message || "Không thể kiểm tra bệnh án của bệnh nhân.");
+        }
+        if (cancelled) return;
+
+        const matching = res.data.data.find(record =>
+          Number(record.appointment_id) === appointmentIdForLookup
+        );
+        if (matching) {
+          const id = Number(matching.record_id);
+          if (!Number.isInteger(id) || id <= 0) {
+            throw new Error("Bệnh án đã có nhưng record_id không hợp lệ.");
+          }
+          setRecordId(id);
+          setSymptoms(prev => prev || matching.symptoms || "");
+          setSelectedIcd(prev => prev || matching.diagnosis_icd10 || "");
+          // Backend chỉ lưu một trường notes; giữ nguyên nội dung khi chỉnh sửa.
+          setExamNotes(prev => prev || matching.notes || "");
+        }
+        setRecordLookupState("ready");
+      })
+      .catch(err => {
+        if (cancelled) return;
+        setRecordLookupState("error");
+        setSaveError(
+          "Không thể kiểm tra bệnh án hiện có: " +
+          (err.response?.data?.message || err.message) +
+          ". Không thể lưu mới để tránh tạo bản ghi trùng."
+        );
+      });
+
+    return () => { cancelled = true; };
+  }, [patientIdForLookup, appointmentIdForLookup, recordRefreshKey]);
+
+  // Đọc danh sách chỉ định thật trước khi cho phép gửi chỉ định mới.
+  useEffect(() => {
+    let cancelled = false;
+    if (recordLookupState !== "ready" || !recordId) {
+      setExistingLabRequests([]);
+      setLabListStatus(recordLookupState === "ready" ? "ready" : "idle");
+      return () => { cancelled = true; };
+    }
+
+    setLabListStatus("loading");
+    api.get("/doctor/lab-requests", { params: { record_id: recordId } })
+      .then(res => {
+        if (!res.data?.success || !Array.isArray(res.data?.data)) {
+          throw new Error(res.data?.message || "Phản hồi danh sách CLS không hợp lệ.");
+        }
+        if (!cancelled) {
+          setExistingLabRequests(res.data.data);
+          setLabListStatus("ready");
+        }
+      })
+      .catch(err => {
+        if (!cancelled) {
+          setLabListStatus("error");
+          setSaveError(
+            "Không thể kiểm tra chỉ định CLS đã có: " +
+            (err.response?.data?.message || err.message) +
+            ". Nhấn Tải lại chỉ định để thử lại."
+          );
+        }
+      });
+
+    return () => { cancelled = true; };
+  }, [recordLookupState, recordId, labRefreshKey]);
 
   const handleSendToLab = async () => {
-    try {
-      // Gửi yêu cầu cận lâm sàng sang Backend
-      for (const lab of selectedLabs) {
-        await api.post('/doctor/lab-requests', {
-          record_id: patient.id || 1,
-          doctor_id: 1,
-          test_type: lab.name || 'Xét nghiệm cận lâm sàng',
-          notes: labNotes
-        }).catch(() => null);
-      }
-    } catch (err) {
-      console.warn('Lỗi gửi lab requests:', err.message);
+    setSaveSuccess(false);
+    setSaveError("");
+    const doctorId = Number(user?.staff_id ?? user?.staffId);
+
+    if (!recordId || recordLookupState !== "ready") {
+      setSaveError("Cần lưu hoặc tải bệnh án hợp lệ trước khi gửi chỉ định CLS.");
+      return;
+    }
+    if (!Number.isInteger(doctorId) || doctorId <= 0 ||
+        !Number.isInteger(patientIdForLookup) || patientIdForLookup <= 0) {
+      setSaveError("Thiếu staff_id bác sĩ hoặc patient_id; không sử dụng ID giả.");
+      return;
+    }
+    if (labListStatus !== "ready") {
+      setSaveError("Chưa kiểm tra được các chỉ định hiện có. Hãy tải lại trước khi gửi.");
+      return;
+    }
+    if (labOrders.length === 0) {
+      setSaveError("Chưa chọn xét nghiệm để gửi.");
+      return;
+    }
+    if (labOrders.some(lab => existingLabRequests.some(req =>
+      String(req.test_type || "").trim().toLowerCase() ===
+      String(lab.name || "").trim().toLowerCase()
+    ))) {
+      setSaveError("Một số xét nghiệm đã có chỉ định. Hãy bỏ lựa chọn trùng trước khi gửi.");
+      return;
     }
 
-    setToastMessage('Đã lưu chỉ định CLS! Bệnh nhân được chuyển đi thực hiện xét nghiệm & CĐHA.');
-    setSaveSuccess(true);
-    setTimeout(() => {
-      setSaveSuccess(false);
-      navigate('/doctor');
-    }, 1500);
+    setIsSendingLabs(true);
+    let sentCount = 0;
+    try {
+      for (const lab of labOrders) {
+        const res = await api.post("/doctor/lab-requests", {
+          record_id: recordId,
+          patient_id: patientIdForLookup,
+          doctor_id: doctorId,
+          test_type: lab.name
+        });
+        if (!res.data?.success || !Number.isInteger(Number(res.data?.lab_request_id)) ||
+            Number(res.data.lab_request_id) <= 0) {
+          throw new Error(res.data?.message || "Backend không xác nhận ID chỉ định mới.");
+        }
+        sentCount += 1;
+        setExistingLabRequests(current => [...current, {
+          lab_request_id: Number(res.data.lab_request_id),
+          record_id: recordId,
+          test_type: lab.name,
+          status: "REQUESTED"
+        }]);
+        setLabOrders(current => current.filter(item => item.id !== lab.id));
+      }
+      setToastMessage(`Đã gửi thành công ${sentCount} chỉ định CLS.`);
+      setSaveSuccess(true);
+    } catch (err) {
+      // Kết nối có thể đứt sau khi server đã nhận lệnh; cần tải lại trước khi thử lại.
+      setLabListStatus("error");
+      setSaveError(
+        `Đã xác nhận ${sentCount} chỉ định được gửi. ` +
+        `Chỉ định tiếp theo chưa xác định kết quả: ${err.response?.data?.message || err.message}. ` +
+        "Hãy tải lại danh sách CLS trước khi gửi lại để tránh trùng."
+      );
+    } finally {
+      setIsSendingLabs(false);
+    }
   };
 
-  const handleSaveRecord = async () => {
-    try {
-      // 1. Gửi hồ sơ bệnh án sang Backend
-      await api.post('/doctor/medical-records', {
-        appointment_id: patient.id || 1,
-        doctor_id: 1,
-        patient_id: patient.id || 1,
-        diagnosis: primaryDiagnosis || 'Tăng huyết áp vô căn (I10)',
-        treatment_plan: treatmentPlan,
-        clinical_notes: doctorAdvice
-      }).catch(() => null);
 
-      // 2. Gửi đơn thuốc ngoại trú sang Backend
-      if (prescriptions.length > 0) {
-        await api.post('/doctor/prescriptions', {
-          record_id: patient.id || 1,
-          notes: doctorAdvice,
-          items: prescriptions
-        }).catch(() => null);
-      }
-    } catch (err) {
-      console.warn('Lỗi lưu medical-records / prescriptions:', err.message);
+
+const handleSaveRecord = async () => {
+  setSaveError("");
+  setSaveSuccess(false);
+
+  if (recordLookupState !== "ready") {
+    setSaveError("Chưa kiểm tra được bệnh án hiện có. Không thể lưu khi trạng thái chưa rõ.");
+    return;
+  }
+
+  const appointmentId = Number(patient?.appointmentId);
+  const patientId = Number(patient?.id);
+  const doctorId = Number(user?.staff_id ?? user?.staffId);
+
+  if (
+    !Number.isInteger(appointmentId) || appointmentId <= 0 ||
+    !Number.isInteger(patientId) || patientId <= 0
+  ) {
+    setSaveError(
+      "Thiếu appointment_id hoặc patient_id hợp lệ. " +
+      "Vui lòng chọn bệnh nhân từ hàng đợi."
+    );
+    return;
+  }
+
+  if (!Number.isInteger(doctorId) || doctorId <= 0) {
+    setSaveError(
+      "Không có staff_id của bác sĩ. Không thể lưu bệnh án " +
+      "bằng user_id hoặc ID giả."
+    );
+    return;
+  }
+
+  const medicalRecord = {
+    appointment_id: appointmentId,
+    patient_id: patientId,
+    doctor_id: doctorId,
+    symptoms: symptoms.trim(),
+    diagnosis_icd10: selectedIcd.trim(),
+    notes: [
+      examNotes.trim(),
+      diagnosisDetails.trim(),
+      doctorAdvice.trim()
+    ].filter(Boolean).join("\n\n")
+  };
+
+  if (!medicalRecord.symptoms || !medicalRecord.diagnosis_icd10) {
+    setSaveError("Vui lòng nhập triệu chứng và mã chẩn đoán ICD-10.");
+    return;
+  }
+
+  setIsSaving(true);
+
+  try {
+    const res = recordId
+      ? await api.put(`/doctor/medical-records/${recordId}`, {
+          symptoms: medicalRecord.symptoms,
+          diagnosis_icd10: medicalRecord.diagnosis_icd10,
+          notes: medicalRecord.notes
+        })
+      : await api.post("/doctor/medical-records", medicalRecord);
+
+    if (!res.data?.success) {
+      throw new Error(res.data?.message || "Không thể lưu bệnh án.");
     }
 
-    setToastMessage('Đã lưu hồ sơ bệnh án & kê đơn thành công! Đang chuyển về hàng đợi...');
+    if (!recordId) {
+      const newId = Number(res.data.record_id);
+      if (!Number.isInteger(newId) || newId <= 0) {
+        throw new Error(
+          "Backend báo thành công nhưng không trả record_id. " +
+          "Cần kiểm tra lại dữ liệu trước khi thử lưu tiếp."
+        );
+      }
+      setRecordId(newId);
+    }
+
+    setToastMessage(
+      "Đã lưu bệnh án thành công. " +
+      "Đơn thuốc và chỉ định CLS chưa được gửi."
+    );
     setSaveSuccess(true);
-    setTimeout(() => {
-      setSaveSuccess(false);
-      navigate('/doctor');
-    }, 1500);
+  } catch (err) {
+    // Nếu POST thất bại hoặc phản hồi bị mất, không thể chắc bệnh án chưa được tạo.
+    // Chặn việc POST lần hai cho đến khi tra cứu lại theo appointment_id.
+    if (!recordId) setRecordLookupState("error");
+    setSaveError(
+      (err.response?.data?.message || err.message || "Không thể lưu bệnh án.") +
+      (!recordId ? " Hãy kiểm tra lại bệnh án trước khi thử lưu mới." : "")
+    );
+  } finally {
+    setIsSaving(false);
+  }
+};
+
+  const handleDeleteRecord = async () => {
+    if (!recordId || recordLookupState !== "ready" || isSaving || isDeleting || isSendingLabs) return;
+    const id = String(recordId);
+    const typed = window.prompt(
+      `Xóa vĩnh viễn bệnh án #${id}? Các chỉ định và đơn thuốc liên quan có thể bị xóa theo database. Nhập ${id} để xác nhận:`
+    );
+    if (typed !== id) return;
+    setSaveError("");
+    setSaveSuccess(false);
+    setIsDeleting(true);
+    try {
+      const res = await api.delete(`/doctor/medical-records/${id}`);
+      if (!res.data?.success) throw new Error(res.data?.message || "Backend không xác nhận xóa bệnh án.");
+      setRecordId(null);
+      setExistingLabRequests([]);
+      setLabOrders([]);
+      setLabListStatus("idle");
+      setRecordLookupState("loading");
+      setToastMessage(`Đã xóa bệnh án #${id}. Tải lại hồ sơ trước khi lưu mới.`);
+      setSaveSuccess(true);
+      setRecordRefreshKey(value => value + 1);
+    } catch (err) {
+      // Even on a timeout the deletion may have completed. Require a fresh lookup.
+      setRecordLookupState("error");
+      setSaveError((err.response?.data?.message || err.message || "Không thể xác nhận xóa bệnh án.") +
+        " Hãy kiểm tra lại bệnh án trước khi thử xóa hay tạo mới.");
+    } finally {
+      setIsDeleting(false);
+    }
   };
+
+  if (!location.state?.patient) {
+    return (
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-6">
+        <h2 className="font-bold text-amber-900">Chưa chọn bệnh nhân</h2>
+        <p className="mt-2 text-sm text-amber-800">
+          Vui lòng chọn một lịch hẹn hợp lệ từ hàng đợi khám bệnh.
+        </p>
+        <button
+          type="button"
+          onClick={() => navigate("/doctor")}
+          className="mt-4 rounded-lg bg-[#004282] px-4 py-2 text-white"
+        >
+          Quay lại hàng đợi
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
+      {saveError && (
+        <div
+          role="alert"
+          className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+        >
+          {saveError}
+        </div>
+      )}
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-700">
+        <span>
+          {recordLookupState === "loading" ? "Đang kiểm tra bệnh án theo lịch hẹn..." :
+           recordLookupState === "error" ? "Chưa xác minh được bệnh án" :
+           recordId ? `Đã xác minh bệnh án #${recordId}` : "Chưa có bệnh án cho lịch hẹn này"}
+        </span>
+        <button type="button" disabled={isSaving || isSendingLabs}
+          onClick={() => { setSaveError(""); setRecordRefreshKey(value => value + 1); }}
+          className="rounded-lg border border-blue-200 px-3 py-1 text-blue-700 disabled:opacity-50">
+          Kiểm tra lại bệnh án
+        </button>
+      </div>
+      {recordId && (
+        <p className="rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-700">
+          Bệnh án hiện tại: #{recordId}
+        </p>
+      )}
       {/* Toast Saved */}
       {saveSuccess && (
         <div className="fixed top-20 right-8 bg-emerald-600 text-white px-5 py-3 rounded-xl shadow-xl flex items-center gap-3 z-50">
@@ -209,7 +474,7 @@ const ExaminationRoom = () => {
       {/* Top Action Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm">
         <div className="flex items-center gap-3">
-          <button 
+          <button
             onClick={() => navigate('/doctor')}
             className="p-2 hover:bg-slate-100 rounded-xl transition text-slate-600"
             title="Quay lại danh sách chờ"
@@ -224,13 +489,13 @@ const ExaminationRoom = () => {
                 : `Phòng Khám Lâm Sàng - Số Thứ Tự: ${patient.queueNumber}`}
             </h2>
             <span className="text-xs text-slate-500">
-              Mã hồ sơ: <strong className="text-slate-800">{patient.patientId}</strong> • Ngày khám: 20/10/2026
+              Mã hồ sơ: <strong className="text-slate-800">{patient.patientId ?? "—"}</strong> • Ngày khám: {patient.appointmentDate ?? "Chưa có thông tin"}
             </span>
           </div>
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">
-          <button 
+          <button
             onClick={() => window.print()}
             className="flex items-center gap-1.5 px-3.5 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold shadow-sm transition"
           >
@@ -240,23 +505,35 @@ const ExaminationRoom = () => {
 
           {/* Nút gửi bệnh nhân đi làm xét nghiệm (khi có chỉ định CLS và chưa phải ca kết luận) */}
           {labOrders.length > 0 && !patient.isConclusion && patient.status !== 'LAB_READY' && (
-            <button 
+            <button
               onClick={handleSendToLab}
-              className="flex items-center gap-1.5 px-4 py-2 bg-purple-700 hover:bg-purple-800 text-white rounded-xl text-xs font-bold shadow-md transition active:scale-95"
+              disabled={isSendingLabs || isSaving || isDeleting || labListStatus !== "ready" || !recordId}
+              className="flex items-center gap-1.5 px-4 py-2 bg-purple-700 hover:bg-purple-800 text-white rounded-xl text-xs font-bold shadow-md transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <FlaskConical className="w-4 h-4" />
-              Chỉ định & Gửi làm CLS
+              {isSendingLabs ? "Đang gửi chỉ định..." : "Chỉ định & Gửi làm CLS"}
             </button>
           )}
 
-          {/* Nút hoàn tất khám & lưu đơn thuốc */}
-          <button 
-            onClick={handleSaveRecord}
-            className="flex items-center gap-2 px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md transition active:scale-95"
-          >
-            <Save className="w-4 h-4" />
-            {patient.isConclusion || patient.status === 'LAB_READY' ? 'Kết luận & Lưu đơn thuốc' : 'Hoàn thành & Lưu bệnh án'}
-          </button>
+      {/* Nút hoàn tất khám & lưu đơn thuốc */}
+      <button
+        onClick={handleSaveRecord}
+        disabled={isSaving || isDeleting || isSendingLabs || recordLookupState !== "ready"}
+        className="flex items-center gap-2 px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold disabled:opacity-50"
+      >
+        <Save className="w-4 h-4" />
+        {isSaving ? "Đang lưu..." : "Lưu bệnh án"}
+      </button>
+      {recordId && recordLookupState === "ready" && (
+        <button
+          type="button"
+          onClick={handleDeleteRecord}
+          disabled={isDeleting || isSaving || isSendingLabs}
+          className="inline-flex items-center gap-1 rounded-xl border border-red-200 px-3 py-2 text-xs font-bold text-red-700 disabled:opacity-50"
+        >
+          <Trash2 size={16} /> {isDeleting ? "Đang xóa..." : "Xóa bệnh án"}
+        </button>
+      )}
         </div>
       </div>
 
@@ -265,7 +542,7 @@ const ExaminationRoom = () => {
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center font-bold text-xl text-white">
-              {patient.fullName.charAt(0)}
+              {(patient.fullName ?? "?").charAt(0)}
             </div>
             <div>
               <div className="flex items-center gap-3 flex-wrap">
@@ -323,19 +600,19 @@ const ExaminationRoom = () => {
                   <input
                     type="number"
                     value={vitals.bpSystolic}
-                    onChange={(e) => setVitals({ ...vitals, bpSystolic: Number(e.target.value) })}
+                    onChange={(e) => setVitals({ ...vitals, bpSystolic: e.target.value === "" ? "" : Number(e.target.value) })}
                     className="w-14 p-1.5 text-center font-bold text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-[#004282]"
                   />
                   <span className="text-slate-400 font-bold">/</span>
                   <input
                     type="number"
                     value={vitals.bpDiastolic}
-                    onChange={(e) => setVitals({ ...vitals, bpDiastolic: Number(e.target.value) })}
+                    onChange={(e) => setVitals({ ...vitals, bpDiastolic: e.target.value === "" ? "" : Number(e.target.value) })}
                     className="w-14 p-1.5 text-center font-bold text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-[#004282]"
                   />
                 </div>
                 <span className={`text-[11px] mt-1 block font-semibold ${vitals.bpSystolic >= 140 ? 'text-red-600' : 'text-emerald-600'}`}>
-                  {vitals.bpSystolic >= 140 ? 'Huyết áp cao' : 'Bình thường'}
+                  {vitals.bpSystolic === '' ? 'Chưa có số đo' : vitals.bpSystolic >= 140 ? 'Huyết áp cao' : 'Đã nhập số đo'}
                 </span>
               </div>
 
@@ -345,7 +622,7 @@ const ExaminationRoom = () => {
                 <input
                   type="number"
                   value={vitals.heartRate}
-                  onChange={(e) => setVitals({ ...vitals, heartRate: Number(e.target.value) })}
+                  onChange={(e) => setVitals({ ...vitals, heartRate: e.target.value === "" ? "" : Number(e.target.value) })}
                   className="w-full p-1.5 text-center font-bold text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-[#004282]"
                 />
                 <span className="text-[11px] text-slate-400 mt-1 block">60 - 100 ck/phút</span>
@@ -358,10 +635,10 @@ const ExaminationRoom = () => {
                   type="number"
                   step="0.1"
                   value={vitals.temperature}
-                  onChange={(e) => setVitals({ ...vitals, temperature: Number(e.target.value) })}
+                  onChange={(e) => setVitals({ ...vitals, temperature: e.target.value === "" ? "" : Number(e.target.value) })}
                   className="w-full p-1.5 text-center font-bold text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-[#004282]"
                 />
-                <span className="text-[11px] text-emerald-600 mt-1 block">Không sốt</span>
+                <span className="text-[11px] text-slate-500 mt-1 block">{vitals.temperature === "" ? "Chưa có số đo" : "Đã nhập số đo"}</span>
               </div>
 
               {/* SpO2 */}
@@ -370,10 +647,10 @@ const ExaminationRoom = () => {
                 <input
                   type="number"
                   value={vitals.spo2}
-                  onChange={(e) => setVitals({ ...vitals, spo2: Number(e.target.value) })}
+                  onChange={(e) => setVitals({ ...vitals, spo2: e.target.value === "" ? "" : Number(e.target.value) })}
                   className="w-full p-1.5 text-center font-bold text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-[#004282]"
                 />
-                <span className="text-[11px] text-emerald-600 mt-1 block">Bão hòa tốt</span>
+                <span className="text-[11px] text-slate-500 mt-1 block">{vitals.spo2 === "" ? "Chưa có số đo" : "Đã nhập số đo"}</span>
               </div>
 
               {/* Chiều cao & Cân nặng & BMI */}
@@ -384,7 +661,7 @@ const ExaminationRoom = () => {
                     <input
                       type="number"
                       value={vitals.weight}
-                      onChange={(e) => setVitals({ ...vitals, weight: Number(e.target.value) })}
+                      onChange={(e) => setVitals({ ...vitals, weight: e.target.value === "" ? "" : Number(e.target.value) })}
                       className="w-20 p-1.5 text-center font-bold text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-[#004282]"
                     />
                   </div>
@@ -393,7 +670,7 @@ const ExaminationRoom = () => {
                     <input
                       type="number"
                       value={vitals.height}
-                      onChange={(e) => setVitals({ ...vitals, height: Number(e.target.value) })}
+                      onChange={(e) => setVitals({ ...vitals, height: e.target.value === "" ? "" : Number(e.target.value) })}
                       className="w-20 p-1.5 text-center font-bold text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-[#004282]"
                     />
                   </div>
@@ -471,11 +748,12 @@ const ExaminationRoom = () => {
                 </label>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-slate-500">Mã ICD-10:</span>
-                  <select 
+                  <select
                     value={selectedIcd}
                     onChange={(e) => setSelectedIcd(e.target.value)}
                     className="p-1.5 text-xs font-bold bg-white border border-blue-300 rounded-lg text-[#004282] focus:outline-none"
                   >
+                    <option value="" disabled>Chọn mã ICD-10</option>
                     {MOCK_ICD10_LIST.map(icd => (
                       <option key={icd.code} value={icd.code}>
                         [{icd.code}] - {icd.name}
@@ -518,9 +796,9 @@ const ExaminationRoom = () => {
             <div className="flex items-center justify-between mb-3 border-b pb-2">
               <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wide flex items-center gap-2">
                 <FlaskConical className="w-4 h-4 text-purple-600" />
-                Cận Lâm Sàng ({labOrders.length})
+                Cận Lâm Sàng — Bản nháp ({labOrders.length})
               </h4>
-              <button 
+              <button
                 onClick={() => setShowLabModal(true)}
                 className="text-xs text-[#004282] hover:text-[#002f5e] font-bold flex items-center gap-1 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200 transition"
               >
@@ -530,7 +808,7 @@ const ExaminationRoom = () => {
 
             {labOrders.length === 0 ? (
               <div className="text-xs text-slate-400 py-6 text-center italic">
-                Chưa có chỉ định xét nghiệm hoặc chẩn đoán hình ảnh.
+                Chưa chọn chỉ định mới. Các lựa chọn bên dưới chưa gửi lên hệ thống.
               </div>
             ) : (
               <div className="space-y-2.5">
@@ -538,7 +816,7 @@ const ExaminationRoom = () => {
                   <div key={test.id} className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs">
                     <div className="flex items-start justify-between gap-2">
                       <span className="font-semibold text-slate-800 leading-snug">{test.name}</span>
-                      <button 
+                      <button
                         onClick={() => handleToggleLab(test)}
                         className="text-slate-400 hover:text-red-500 transition"
                         title="Xóa chỉ định"
@@ -552,20 +830,50 @@ const ExaminationRoom = () => {
                         {test.status}
                       </span>
                     </div>
-                    {/* Nút xem phiếu thông số chi tiết */}
-                    <div className="mt-2.5 pt-2 border-t border-slate-200/80 flex items-center justify-between">
-                      <button
-                        onClick={() => setSelectedLabForView(test)}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-[#004282] text-[#004282] hover:text-white font-bold text-[11px] border border-blue-200 transition active:scale-95"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        Xem phiếu thông số KQ
-                      </button>
-                      <span className="text-[10px] text-slate-400">HMUH Lab</span>
-                    </div>
+                    <p className="mt-2 text-[11px] text-amber-700">
+                      Bản nháp chưa gửi. Không có phiếu kết quả để xem.
+                    </p>
                   </div>
                 ))}
               </div>
+            )}
+          </div>
+
+          {/* Chỉ định CLS đã ghi nhận thật từ backend */}
+          <div className="rounded-2xl border border-slate-200 bg-white p-5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h4 className="text-sm font-bold text-slate-800">
+                Chỉ định đã gửi ({existingLabRequests.length})
+              </h4>
+              <button
+                type="button"
+                disabled={!recordId || isSendingLabs}
+                onClick={() => {
+                  setSaveError("");
+                  setLabRefreshKey(value => value + 1);
+                }}
+                className="rounded-lg border border-blue-200 px-2 py-1 text-xs font-semibold text-blue-700 disabled:opacity-50"
+              >
+                Tải lại chỉ định
+              </button>
+            </div>
+            {!recordId ? (
+              <p className="mt-2 text-xs text-slate-500">Cần lưu hoặc tải bệnh án trước.</p>
+            ) : labListStatus === "loading" ? (
+              <p className="mt-2 text-xs text-slate-500">Đang tải chỉ định...</p>
+            ) : labListStatus === "error" ? (
+              <p className="mt-2 text-xs text-red-700">Không xác minh được chỉ định đã gửi. Hãy tải lại.</p>
+            ) : existingLabRequests.length === 0 ? (
+              <p className="mt-2 text-xs text-slate-500">Chưa có chỉ định được ghi nhận.</p>
+            ) : (
+              <ul className="mt-3 space-y-2">
+                {existingLabRequests.map(req => (
+                  <li key={req.lab_request_id} className="rounded-lg border border-slate-100 p-2 text-xs">
+                    <span className="font-medium">{req.test_type}</span>
+                    <span className="ml-2 text-slate-500">{req.status || "Chưa rõ trạng thái"}</span>
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
 
@@ -574,9 +882,9 @@ const ExaminationRoom = () => {
             <div className="flex items-center justify-between mb-3 border-b pb-2">
               <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wide flex items-center gap-2">
                 <Pill className="w-4 h-4 text-emerald-600" />
-                Đơn Thuốc Ngoại Trú ({prescriptions.length})
+                Đơn Thuốc Nháp ({prescriptions.length})
               </h4>
-              <button 
+              <button
                 onClick={() => setShowMedModal(true)}
                 className="text-xs text-emerald-700 hover:text-emerald-800 font-bold flex items-center gap-1 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 transition"
               >
@@ -584,6 +892,9 @@ const ExaminationRoom = () => {
               </button>
             </div>
 
+            <p className="mb-2 text-xs text-amber-700">
+              Thuốc được chọn ở đây chỉ là bản nháp trên frontend, chưa lưu vào database.
+            </p>
             {prescriptions.length === 0 ? (
               <div className="text-xs text-slate-400 py-6 text-center italic">
                 Chưa có thuốc nào trong đơn.
@@ -597,7 +908,7 @@ const ExaminationRoom = () => {
                         <span className="font-bold text-slate-900">{index + 1}. {med.name}</span>
                         <span className="ml-2 text-slate-500">Số lượng: <strong>{med.quantity} {med.unit}</strong></span>
                       </div>
-                      <button 
+                      <button
                         onClick={() => handleRemoveMedication(med.id)}
                         className="text-slate-400 hover:text-red-500 transition"
                         title="Xóa thuốc"
@@ -629,8 +940,8 @@ const ExaminationRoom = () => {
 
             <div className="p-5 space-y-4">
               <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">Chọn loại thuốc từ danh mục:</label>
-                <select 
+                <label className="text-xs font-bold text-slate-700 block mb-1">Chọn thuốc từ danh sách tham khảo (chưa đồng bộ kho):</label>
+                <select
                   value={newMed.name}
                   onChange={(e) => {
                     const found = MOCK_COMMON_MEDICATIONS.find(m => m.name === e.target.value);
@@ -642,11 +953,12 @@ const ExaminationRoom = () => {
                     });
                   }}
                   className="w-full p-2.5 text-sm bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:border-[#004282]"
-                >
-                  {MOCK_COMMON_MEDICATIONS.map(m => (
-                    <option key={m.id} value={m.name}>{m.name} (Kho còn {m.stock} {m.unit})</option>
-                  ))}
-                </select>
+                  >
+                    <option value="">Chọn thuốc tham khảo (chưa xác thực)</option>
+                    {MOCK_COMMON_MEDICATIONS.map(m => (
+                      <option key={m.id} value={m.name}>{m.name}</option>
+                    ))}
+                  </select>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -682,13 +994,13 @@ const ExaminationRoom = () => {
               </div>
 
               <div className="flex justify-end gap-2 pt-2 border-t">
-                <button 
+                <button
                   onClick={() => setShowMedModal(false)}
                   className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition"
                 >
                   Hủy
                 </button>
-                <button 
+                <button
                   onClick={handleAddMedication}
                   className="px-5 py-2 text-xs font-bold bg-[#004282] hover:bg-[#002f5e] text-white rounded-xl shadow transition"
                 >
@@ -713,26 +1025,26 @@ const ExaminationRoom = () => {
 
             <div className="p-5 max-h-[70vh] overflow-y-auto space-y-3">
               <p className="text-xs text-slate-500 mb-2">
-                Tích chọn các dịch vụ kỹ thuật cần chỉ định cho bệnh nhân:
+                Danh mục gợi ý ở frontend; chưa đồng bộ giá/danh mục xét nghiệm từ backend. Việc tích chọn chỉ tạo bản nháp.
               </p>
 
               {MOCK_LAB_TESTS.map(test => {
                 const isSelected = labOrders.some(l => l.id === test.id);
                 return (
-                  <div 
+                  <div
                     key={test.id}
                     onClick={() => handleToggleLab(test)}
                     className={`p-3 rounded-xl border text-xs flex items-center justify-between cursor-pointer transition ${
-                      isSelected 
-                        ? 'bg-blue-50 border-[#004282] shadow-sm' 
+                      isSelected
+                        ? 'bg-blue-50 border-[#004282] shadow-sm'
                         : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <input 
-                        type="checkbox" 
+                      <input
+                        type="checkbox"
                         checked={isSelected}
-                        onChange={() => {}} 
+                        onChange={() => {}}
                         className="w-4 h-4 text-[#004282] rounded"
                       />
                       <div>
@@ -741,7 +1053,7 @@ const ExaminationRoom = () => {
                       </div>
                     </div>
                     <div className="text-right">
-                      <span className="font-bold text-[#004282]">{test.price.toLocaleString('vi-VN')} đ</span>
+                        <span className="text-[11px] text-slate-500">Chưa có giá xác minh</span>
                     </div>
                   </div>
                 );
@@ -749,24 +1061,17 @@ const ExaminationRoom = () => {
             </div>
 
             <div className="p-4 bg-slate-50 border-t flex justify-end">
-              <button 
+              <button
                 onClick={() => setShowLabModal(false)}
                 className="px-5 py-2 text-xs font-bold bg-[#004282] hover:bg-[#002f5e] text-white rounded-xl shadow transition"
               >
-                Xác nhận chỉ định
+                Lưu lựa chọn (chưa gửi)
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* MODAL: Phiếu kết quả thông số Cận lâm sàng chi tiết */}
-      <LabResultModal
-        isOpen={Boolean(selectedLabForView)}
-        onClose={() => setSelectedLabForView(null)}
-        labTest={selectedLabForView}
-        patient={patient}
-      />
     </div>
   );
 };

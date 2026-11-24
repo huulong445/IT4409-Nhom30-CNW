@@ -4,6 +4,7 @@ import {
   Users,
   Search,
   UserPlus,
+  Pencil,
   Lock,
   Unlock,
   CheckCircle2,
@@ -20,6 +21,13 @@ const UserManagement = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState("ALL");
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
+  const [editForm, setEditForm] = useState({
+    username: "",
+    email: "",
+    phone: "",
+  });
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [newUser, setNewUser] = useState({
     username: "",
     password: "",
@@ -172,6 +180,82 @@ const UserManagement = () => {
           err.message ||
           "Không thể tạo tài khoản.",
       );
+    }
+  };
+
+  const handleOpenEdit = async (user) => {
+    setErrorMessage("");
+
+    try {
+      const res = await api.get(`/admin/users/${user.id}`);
+
+      if (!res.data?.success || !res.data?.data) {
+        throw new Error("Không lấy được thông tin tài khoản.");
+      }
+
+      const detail = res.data.data;
+
+      setEditForm({
+        username: detail.username || "",
+        email: detail.email || "",
+        phone: detail.phone || "",
+      });
+
+      setEditingUser(detail);
+    } catch (err) {
+      setErrorMessage(
+        err.response?.data?.message ||
+        err.message ||
+        "Không thể tải chi tiết tài khoản."
+      );
+    }
+  };
+
+  const handleSaveEdit = async (e) => {
+    e.preventDefault();
+    if (!editingUser) return;
+
+    setIsSavingEdit(true);
+    setErrorMessage("");
+
+    try {
+      const res = await api.put(
+        `/admin/users/${editingUser.user_id}`,
+        {
+          username: editForm.username.trim(),
+          email: editForm.email.trim(),
+          phone: editForm.phone.trim(),
+        }
+      );
+
+      if (!res.data?.success || !res.data?.data) {
+        throw new Error("Không thể cập nhật tài khoản.");
+      }
+
+      const updated = res.data.data;
+
+      setUsers((current) =>
+        current.map((user) =>
+          user.id === editingUser.user_id
+            ? {
+                ...user,
+                username: updated.username,
+                email: updated.email,
+                phone: updated.phone,
+              }
+            : user
+        )
+      );
+
+      setEditingUser(null);
+    } catch (err) {
+      setErrorMessage(
+        err.response?.data?.message ||
+        err.message ||
+        "Không thể cập nhật tài khoản."
+      );
+    } finally {
+      setIsSavingEdit(false);
     }
   };
 
@@ -387,6 +471,13 @@ const UserManagement = () => {
                     <td className="py-3.5 px-4 text-right">
                       <div className="flex items-center justify-end gap-2">
                         <button
+                          onClick={() => handleOpenEdit(user)}
+                          className="p-1.5 rounded-lg border border-blue-200 text-blue-600 hover:bg-blue-50 transition"
+                          title="Xem chi tiết và sửa tài khoản"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button
                           onClick={() => toggleUserStatus(user.id)}
                           className={`p-1.5 rounded-lg border text-xs font-medium transition ${
                             user.isActive
@@ -417,6 +508,72 @@ const UserManagement = () => {
           </table>
         </div>
       </div>
+
+
+    {editingUser && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
+        <div className="w-full max-w-md rounded-2xl bg-white shadow-xl">
+          <div className="flex items-center justify-between rounded-t-2xl bg-[#004282] p-4 text-white">
+            <h3 className="font-bold">Chi tiết và chỉnh sửa tài khoản</h3>
+            <button
+              type="button"
+              onClick={() => setEditingUser(null)}
+              aria-label="Đóng"
+            >
+              ✕
+            </button>
+          </div>
+
+          <form onSubmit={handleSaveEdit} className="space-y-4 p-5">
+            <p className="text-sm text-slate-500">
+              Mã tài khoản: {editingUser.user_id}
+            </p>
+
+            {[
+              { key: "username", label: "Tên đăng nhập", type: "text" },
+              { key: "email", label: "Email", type: "email" },
+              { key: "phone", label: "Số điện thoại", type: "tel" },
+            ].map((field) => (
+              <label key={field.key} className="block text-sm">
+                <span className="mb-1 block font-semibold text-slate-700">
+                  {field.label}
+                </span>
+                <input
+                  type={field.type}
+                  required
+                  value={editForm[field.key]}
+                  onChange={(e) =>
+                    setEditForm((prev) => ({
+                      ...prev,
+                      [field.key]: e.target.value,
+                    }))
+                  }
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                />
+              </label>
+            ))}
+
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setEditingUser(null)}
+                className="rounded-lg border px-4 py-2 text-sm"
+              >
+                Hủy
+              </button>
+              <button
+                type="submit"
+                disabled={isSavingEdit}
+                className="rounded-lg bg-[#004282] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+              >
+                {isSavingEdit ? "Đang lưu..." : "Lưu thay đổi"}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    )}
+
 
       {/* Modal Thêm người dùng */}
       {showAddModal && (

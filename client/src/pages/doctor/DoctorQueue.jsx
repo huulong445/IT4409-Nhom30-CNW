@@ -2,57 +2,132 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
-import { MOCK_QUEUE } from '../../services/mockData';
-import { 
-  Search, 
-  Users, 
-  Clock, 
-  AlertCircle, 
-  CheckCircle2, 
+
+import {
+  Search,
+  Users,
+  Clock,
+  AlertCircle,
+  CheckCircle2,
   FlaskConical
 } from 'lucide-react';
-import LabResultModal from '../../components/LabResultModal';
 
 const DoctorQueue = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [queue, setQueue] = useState(MOCK_QUEUE);
+  const [queue, setQueue] = useState([]);
+  const [queueLoading, setQueueLoading] = useState(true);
+  const [queueError, setQueueError] = useState("");
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL'); // 'ALL', 'WAITING', 'LAB_READY', 'WAITING_LAB', 'COMPLETED'
-  const [selectedLabTest, setSelectedLabTest] = useState(null);
 
   // GỌI API THẬT SANG BACKEND: Lấy danh sách hàng đợi khám của Bác sĩ
+
+  // Lấy lịch hẹn từ backend, không dùng dữ liệu mẫu khi API lỗi.
   useEffect(() => {
+    let cancelled = false;
+
     const fetchDoctorAppointments = async () => {
+      setQueueLoading(true);
+      setQueueError("");
+      setQueue([]);
+
+      const doctorStaffId = Number(user?.staff_id ?? user?.staffId);
+
+      if (!Number.isInteger(doctorStaffId) || doctorStaffId <= 0) {
+        if (!cancelled) {
+          setQueueError(
+            "Chưa xác định được staff_id của bác sĩ. " +
+            "API đăng nhập hiện chỉ trả về user_id."
+          );
+          setQueueLoading(false);
+        }
+        return;
+      }
+
+      const now = new Date();
+      const date = [
+        now.getFullYear(),
+        String(now.getMonth() + 1).padStart(2, "0"),
+        String(now.getDate()).padStart(2, "0"),
+      ].join("-");
+
       try {
-        const doctorId = user?.id || 1;
-        const date = new Date().toISOString().slice(0, 10);
-        const res = await api.get(`/doctor/appointments?doctor_id=${doctorId}&date=${date}`);
-        if (res.data?.success && Array.isArray(res.data.data) && res.data.data.length > 0) {
-          const mapped = res.data.data.map((item, idx) => ({
-            appointmentId: item.appointment_id || item.id || idx + 1,
-            queueNumber: item.queue_number || String(idx + 1).padStart(2, '0'),
-            patientId: item.patient_code || item.patient_id || `BN-2024-${String(idx + 1).padStart(4, '0')}`,
-            fullName: item.full_name || item.patient_name || 'Bệnh nhân',
-            gender: item.gender === 'MALE' ? 'Nam' : item.gender === 'FEMALE' ? 'Nữ' : 'Khác',
-            age: item.age || 40,
-            phone: item.phone || '0912 345 678',
-            hasInsurance: item.has_insurance !== undefined ? Boolean(item.has_insurance) : true,
-            status: item.status || 'WAITING',
-            reason: item.reason || item.symptoms || 'Khám ban đầu',
-            allergies: item.allergies || 'Không có',
-            timeSlot: item.time_slot || null
-          }));
+        const res = await api.get("/doctor/appointments", {
+          params: {
+            doctor_id: doctorStaffId,
+            date,
+          },
+        });
+
+        if (!res.data?.success || !Array.isArray(res.data?.data)) {
+          throw new Error(
+            res.data?.message || "Phản hồi API không hợp lệ."
+          );
+        }
+
+        const mapped = res.data.data.map((item, idx) => {
+          const dob = item.dob ? new Date(item.dob) : null;
+          const today = new Date();
+
+          let age = null;
+          if (dob && !Number.isNaN(dob.getTime())) {
+            age = today.getFullYear() - dob.getFullYear();
+            if (
+              today.getMonth() < dob.getMonth() ||
+              (today.getMonth() === dob.getMonth() &&
+                today.getDate() < dob.getDate())
+            ) {
+              age--;
+            }
+          }
+
+          return {
+            id: item.patient_id,
+            appointmentId: item.appointment_id,
+            queueNumber: String(idx + 1).padStart(2, "0"),
+            patientId: String(item.patient_id ?? "—"),
+            fullName: item.full_name || "Chưa có tên",
+            gender:
+              item.gender === "MALE" ? "Nam" :
+              item.gender === "FEMALE" ? "Nữ" : "Khác",
+            age,
+            dob: item.dob || null,
+            phone: "—",
+            hasInsurance: Boolean(item.insurance_number),
+            status:
+              item.status === "PENDING" ? "WAITING" : item.status,
+            reason: "Chưa có thông tin lý do khám",
+            allergies: null,
+            timeSlot: item.appointment_time ?? item.time_slot ?? null,
+          };
+        });
+
+        if (!cancelled) {
           setQueue(mapped);
         }
       } catch (err) {
-        console.warn("Backend appointments API call:", err.message);
-        // Fallback sang mock queue nếu DB chưa có bản ghi
+        if (!cancelled) {
+          setQueue([]);
+          setQueueError(
+            err.response?.data?.message ||
+            err.message ||
+            "Không thể tải hàng đợi khám bệnh."
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setQueueLoading(false);
+        }
       }
     };
 
     fetchDoctorAppointments();
-  }, [user]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.staff_id, user?.staffId, user?.role]);
 
   // Thống kê số lượng theo quy trình khám
   const stats = {
@@ -65,31 +140,26 @@ const DoctorQueue = () => {
   };
 
   const handleStartExam = (patient, isConclusion = false) => {
-    const updated = queue.map(p => 
-      p.appointmentId === patient.appointmentId 
-        ? { ...p, status: 'IN_PROGRESS' } 
-        : (p.status === 'IN_PROGRESS' ? { ...p, status: 'WAITING' } : p)
-    );
-    setQueue(updated);
-    navigate('/doctor/exam', { 
-      state: { 
-        patient: { ...patient, status: 'IN_PROGRESS', isConclusion } 
-      } 
+    if (!patient?.appointmentId || !patient?.id) {
+      window.alert("Thiếu ID lịch hẹn hoặc bệnh nhân.");
+      return;
+    }
+
+    navigate("/doctor/exam", {
+      state: {
+        patient: {
+          ...patient,
+          isConclusion,
+        },
+      },
     });
   };
 
   // Đánh dấu vắng mặt (No-show) hoặc phục hồi lượt khám
-  const handleToggleNoShow = (appointmentId) => {
-    const updated = queue.map(p => {
-      if (p.appointmentId === appointmentId) {
-        return {
-          ...p,
-          status: p.status === 'NO_SHOW' ? 'WAITING' : 'NO_SHOW'
-        };
-      }
-      return p;
-    });
-    setQueue(updated);
+  const handleToggleNoShow = () => {
+    window.alert(
+      "Backend hiện chưa có API đánh dấu bệnh nhân vắng mặt."
+    );
   };
 
   // Bộ lọc dữ liệu tìm kiếm và trạng thái
@@ -169,6 +239,15 @@ const DoctorQueue = () => {
 
   return (
     <div className="space-y-4">
+      {queueError && (
+        <div
+          role="alert"
+          className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+        >
+          <strong>Không thể tải hàng đợi: </strong>
+          {queueError}
+        </div>
+      )}
       {/* Tiêu đề trang */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
@@ -176,22 +255,22 @@ const DoctorQueue = () => {
             Hàng Đợi Khám Bệnh
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Phòng 204 • PGS.TS.BS Nguyễn Văn Trung • Thứ Ba, 20/10/2026
+            Bác sĩ: {user?.fullName || user?.username || "Chưa có thông tin"} • Ngày: {new Date().toLocaleDateString("vi-VN")}
           </p>
         </div>
         <div className="text-xs text-slate-500 bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm flex items-center gap-2">
           <Clock className="w-3.5 h-3.5 text-blue-600" />
-          <span>Thời gian tiếp nhận: <strong>07:30 - 17:00</strong></span>
+          <span>Thời gian tiếp nhận: <strong>Chưa có cấu hình</strong></span>
         </div>
       </div>
 
       {/* Thống kê tiến độ hàng đợi */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        <div 
+        <div
           onClick={() => setStatusFilter('ALL')}
           className={`p-3 rounded-xl border cursor-pointer transition ${
-            statusFilter === 'ALL' 
-              ? 'bg-blue-50/60 border-[#004282] shadow-sm' 
+            statusFilter === 'ALL'
+              ? 'bg-blue-50/60 border-[#004282] shadow-sm'
               : 'bg-white border-slate-200 hover:border-slate-300'
           }`}
         >
@@ -199,11 +278,11 @@ const DoctorQueue = () => {
           <div className="text-xl font-black text-slate-800 mt-1">{stats.total}</div>
         </div>
 
-        <div 
+        <div
           onClick={() => setStatusFilter('WAITING')}
           className={`p-3 rounded-xl border cursor-pointer transition ${
-            statusFilter === 'WAITING' 
-              ? 'bg-amber-50/60 border-amber-500 shadow-sm' 
+            statusFilter === 'WAITING'
+              ? 'bg-amber-50/60 border-amber-500 shadow-sm'
               : 'bg-white border-slate-200 hover:border-slate-300'
           }`}
         >
@@ -216,11 +295,11 @@ const DoctorQueue = () => {
           <div className="text-xl font-black text-blue-800 mt-1">{stats.inProgress}</div>
         </div>
 
-        <div 
+        <div
           onClick={() => setStatusFilter('LAB_READY')}
           className={`p-3 rounded-xl border cursor-pointer transition ${
-            statusFilter === 'LAB_READY' 
-              ? 'bg-emerald-50/80 border-emerald-500 shadow-sm' 
+            statusFilter === 'LAB_READY'
+              ? 'bg-emerald-50/80 border-emerald-500 shadow-sm'
               : 'bg-white border-emerald-200 hover:border-emerald-400'
           }`}
         >
@@ -228,11 +307,11 @@ const DoctorQueue = () => {
           <div className="text-xl font-black text-emerald-800 mt-1">{stats.labReady}</div>
         </div>
 
-        <div 
+        <div
           onClick={() => setStatusFilter('WAITING_LAB')}
           className={`p-3 rounded-xl border cursor-pointer transition ${
-            statusFilter === 'WAITING_LAB' 
-              ? 'bg-purple-50/80 border-purple-500 shadow-sm' 
+            statusFilter === 'WAITING_LAB'
+              ? 'bg-purple-50/80 border-purple-500 shadow-sm'
               : 'bg-white border-purple-200 hover:border-purple-300'
           }`}
         >
@@ -240,11 +319,11 @@ const DoctorQueue = () => {
           <div className="text-xl font-black text-purple-800 mt-1">{stats.waitingLab}</div>
         </div>
 
-        <div 
+        <div
           onClick={() => setStatusFilter('COMPLETED')}
           className={`p-3 rounded-xl border cursor-pointer transition ${
-            statusFilter === 'COMPLETED' 
-              ? 'bg-slate-100 border-slate-400 shadow-sm' 
+            statusFilter === 'COMPLETED'
+              ? 'bg-slate-100 border-slate-400 shadow-sm'
               : 'bg-white border-slate-200 hover:border-slate-300'
           }`}
         >
@@ -336,7 +415,11 @@ const DoctorQueue = () => {
                 <tr>
                   <td colSpan="7" className="py-12 text-center text-slate-400">
                     <Users className="w-10 h-10 mx-auto text-slate-300 mb-2" />
-                    Không tìm thấy bệnh nhân nào trong hàng đợi phù hợp.
+                    {queueLoading
+                      ? "Đang tải danh sách lịch hẹn..."
+                      : queueError
+                        ? "Không tải được dữ liệu từ backend."
+                        : "Không có lịch hẹn nào phù hợp."}
                   </td>
                 </tr>
               ) : (
@@ -346,8 +429,8 @@ const DoctorQueue = () => {
                   const isWaitingLab = item.status === 'WAITING_LAB';
 
                   return (
-                    <tr 
-                      key={item.appointmentId} 
+                    <tr
+                      key={item.appointmentId}
                       className={`hover:bg-blue-50/30 transition-colors ${
                         isInProgress ? 'bg-blue-50/60 font-medium' : isLabReady ? 'bg-emerald-50/30' : item.status === 'NO_SHOW' ? 'opacity-60 bg-slate-50' : ''
                       }`}
@@ -493,14 +576,6 @@ const DoctorQueue = () => {
         </div>
       </div>
 
-      {/* Modal xem thông số kết quả CLS (nếu cần xem nhanh) */}
-      {selectedLabTest && (
-        <LabResultModal
-          test={selectedLabTest}
-          patient={{ fullName: "Bệnh nhân", patientId: "BN-2024" }}
-          onClose={() => setSelectedLabTest(null)}
-        />
-      )}
     </div>
   );
 };
