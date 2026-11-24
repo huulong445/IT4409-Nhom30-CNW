@@ -3,11 +3,16 @@ const controller = require("../../controllers/admin_controller/AdminUser.control
 const { authenticate } = require("../../middlewares/auth.middleware");
 const { authorization } = require("../../middlewares/rbac.middleware");
 const { ROLES } = require("../../config/roles");
-
+const medicineController = require("../../controllers/admin_controller/AdminMedicine.controller");
 const router = express.Router();
 const departmentController = require("../../controllers/admin_controller/AdminDepartment.controller");
 const staffController = require("../../controllers/admin_controller/AdminStaff.controller");
+<<<<<<< HEAD
 router.use(authenticate, authorization(ROLES.ADMIN));
+=======
+const scheduleController = require("../../controllers/admin_controller/AdminSchedule.controller");
+router.use(authenticate, requireRole(ROLES.ADMIN));
+>>>>>>> origin/Vinh
 
 //Quan ly nhan vien
 router.get("/staff", staffController.getAllStaff);
@@ -15,6 +20,15 @@ router.get("/staff/:id", staffController.getStaffById);
 router.post("/staff", staffController.createStaff);
 router.put("/staff/:id", staffController.updateStaff);
 router.delete("/staff/:id", staffController.deleteStaff);
+
+// Quan ly lich lam viec
+router.get("/schedules", scheduleController.getAssignments);
+router.get("/schedules/shifts", scheduleController.getCatalog);
+router.get("/schedules/rooms", scheduleController.getCatalog);
+router.get("/schedules/:id", scheduleController.getAssignment);
+router.post("/schedules", scheduleController.createAssignment);
+router.put("/schedules/:id", scheduleController.updateAssignment);
+router.delete("/schedules/:id", scheduleController.deleteAssignment);
 
 //Quan ly phong ban
 router.get("/departments", departmentController.getAllDepartments);
@@ -30,5 +44,13 @@ router.post("/users", controller.createUserByAdmin);
 router.put("/users/:id", controller.updateUser);
 router.patch("/users/:id/status", controller.updateUserStatus);
 router.delete("/users/:id", controller.deleteUser);
+
+// Quản lý thuốc
+router.get("/medicines", medicineController.getAllMedicines);
+router.get("/medicines/:id", medicineController.getMedicineById);
+router.post("/medicines", medicineController.createMedicine);
+router.put("/medicines/:id", medicineController.updateMedicine);
+router.delete("/medicines/:id", medicineController.deleteMedicine);
+
 
 module.exports = router;
