@@ -32,19 +32,6 @@ const DoctorQueue = () => {
       setQueueError("");
       setQueue([]);
 
-      const doctorStaffId = Number(user?.staff_id ?? user?.staffId);
-
-      if (!Number.isInteger(doctorStaffId) || doctorStaffId <= 0) {
-        if (!cancelled) {
-          setQueueError(
-            "Chưa xác định được staff_id của bác sĩ. " +
-            "API đăng nhập hiện chỉ trả về user_id."
-          );
-          setQueueLoading(false);
-        }
-        return;
-      }
-
       const now = new Date();
       const date = [
         now.getFullYear(),
@@ -54,10 +41,7 @@ const DoctorQueue = () => {
 
       try {
         const res = await api.get("/doctor/appointments", {
-          params: {
-            doctor_id: doctorStaffId,
-            date,
-          },
+          params: { date },
         });
 
         if (!res.data?.success || !Array.isArray(res.data?.data)) {
@@ -127,7 +111,7 @@ const DoctorQueue = () => {
     return () => {
       cancelled = true;
     };
-  }, [user?.staff_id, user?.staffId, user?.role]);
+  }, [user?.user_id, user?.role]);
 
   // Thống kê số lượng theo quy trình khám
   const stats = {

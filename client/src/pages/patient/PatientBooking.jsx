@@ -1,612 +1,437 @@
-import React, { useState } from 'react';
-import { Link, Navigate } from 'react-router-dom';
-import {
-  CalendarDays,
-  Clock3,
-  Stethoscope,
-  Building2,
-  UserCheck,
-  ArrowLeft,
-  Search,
-  ChevronUp,
-  ChevronDown,
-  AlertCircle
-} from 'lucide-react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useEffect, useMemo, useState } from "react";
+import { Link, Navigate } from "react-router-dom";
+import { ArrowLeft, CalendarDays, UserPlus } from "lucide-react";
+import { useAuth } from "../../contexts/AuthContext";
+import api from "../../services/api";
 
-// Danh mục Chuyên khoa, Triệu chứng gợi ý và Danh sách Phòng khám kèm Khung giờ
-export const BOOKING_SPECIALTIES = [
-  {
-    id: 'Y_HOC_CO_TRUYEN',
-    name: 'Y học Cổ Truyền',
-    symptoms: 'Chẩn đoán, duy trì, cải thiện, điều trị và phục hồi bệnh thể chất và tinh thần dựa trên các hiểu biết từ y học dân gian, y học phương đông và y học hiện đại.',
-    area: 'Khu Tái Khám Đích Danh (Nhà K1)',
-    clinics: [
-      {
-        id: 'YHCT_P311',
-        name: 'Phòng khám Y học cổ truyền - P311 tầng 3 nhà K1',
-        location: 'Tầng 3 - Nhà K1',
-        timeSlots: ['13:30', '13:45', '14:00', '14:15', '14:30', '14:45', '15:00', '15:15', '15:30']
-      },
-      {
-        id: 'YHCT_P312',
-        name: 'PK Y học cổ truyền & Châm cứu (P. 312)',
-        location: 'Tầng 3 - Nhà K1',
-        timeSlots: ['08:00', '08:30', '09:00', '09:30', '10:00', '13:30', '14:00', '14:30', '15:00']
-      }
-    ]
-  },
-  {
-    id: 'NOI_DOT_QUY',
-    name: 'Nội - Đột quỵ',
-    symptoms: 'Đau đầu, yếu liệt tay chân, méo miệng, ngôn ngữ bất thường, chóng mặt, nhìn mờ, tê bì tay chân...',
-    area: 'Khu Tái Khám Đích Danh (Nhà K1)',
-    clinics: [
-      {
-        id: 'NOI_P627',
-        name: 'PK Nội khoa 10 (P. 627)',
-        location: 'Tầng 6 - Nhà K1',
-        timeSlots: ['13:30', '13:45', '14:00', '14:15', '14:30', '14:45', '15:00', '15:15', '15:30']
-      },
-      {
-        id: 'NOI_P601',
-        name: 'PK Nội khoa 11 (P. 601)',
-        location: 'Tầng 6 - Nhà K1',
-        timeSlots: ['13:30', '13:45', '14:00', '14:15', '14:30', '14:45', '15:00', '15:15', '15:30']
-      }
-    ]
-  },
-  {
-    id: 'TAO_HINH_THAM_MY',
-    name: 'TẠO HÌNH THẨM MỸ',
-    symptoms: 'DỊ TẬT BẨM SINH, SỨT MÔI HỞ HÀM ẾCH, SẸO, VẾT CẮT HOẶC VẾT RÁCH TRÊN VÙNG DA RỘNG, NÂNG MŨI, NÂNG NGỰC, HÚT MỠ...',
-    area: 'Khu Phẫu Thuật Tạo Hình (Nhà K2)',
-    clinics: [
-      {
-        id: 'THTM_P501',
-        name: 'Phòng khám Tạo hình Thẩm mỹ (P. 501 Nhà K2)',
-        location: 'Tầng 5 - Nhà K2',
-        timeSlots: ['08:30', '09:00', '09:30', '10:00', '14:00', '14:30', '15:00', '15:30']
-      }
-    ]
-  },
-  {
-    id: 'TAI_MUI_HONG',
-    name: 'Tai Mũi Họng',
-    symptoms: 'Triệu chứng: đau đầu, ho, chóng mặt, ngủ ngáy, hắt hơi, ngứa mũi, ngạt mũi, chảy nước mũi, ù tai, nghe kém, khàn tiếng, mất tiếng...',
-    area: 'Khu Khám Chuyên Khoa (Nhà B)',
-    clinics: [
-      {
-        id: 'TMH_P201',
-        name: 'Phòng khám Tai Mũi Họng 1 (P. 201)',
-        location: 'Tầng 2 - Nhà B',
-        timeSlots: ['08:00', '08:30', '09:00', '09:30', '10:00', '13:30', '14:00', '14:30', '15:00']
-      },
-      {
-        id: 'TMH_P202',
-        name: 'Phòng khám Tai Mũi Họng 2 - Nội soi (P. 202)',
-        location: 'Tầng 2 - Nhà B',
-        timeSlots: ['08:00', '08:30', '09:00', '09:30', '10:00', '13:30', '14:00', '14:30', '15:00', '15:30']
-      }
-    ]
-  },
-  {
-    id: 'PHUC_HOI_CHUC_NANG',
-    name: 'Phục hồi Chức năng',
-    symptoms: 'Khám và tư vấn hướng dẫn tập phục hồi chức năng sau chấn thương, Liệt nửa người, cứng khớp sau phẫu thuật...',
-    area: 'Khu Phục Hồi Chức Năng (Nhà C)',
-    clinics: [
-      {
-        id: 'PHCN_P101',
-        name: 'Phòng khám Phục hồi chức năng & Lượng giá (P. 101 Nhà C)',
-        location: 'Tầng 1 - Nhà C',
-        timeSlots: ['08:00', '08:30', '09:00', '09:30', '10:00', '13:30', '14:00', '14:30', '15:00']
-      }
-    ]
-  },
-  {
-    id: 'TIM_MACH',
-    name: 'Khoa Tim Mạch',
-    symptoms: 'Đau thắt ngực khi gắng sức, hồi hộp trống ngực, tăng huyết áp, khó thở về đêm, loạn nhịp tim...',
-    area: 'Khu Khám Chuyên Khoa (Nhà A2)',
-    clinics: [
-      {
-        id: 'PK_204',
-        name: 'Phòng khám 204 - Tim mạch & Tăng huyết áp',
-        location: 'Phòng 204 - Tầng 2, Nhà A2',
-        timeSlots: ['07:30', '08:00', '08:30', '09:00', '09:30', '10:00', '13:30', '14:00', '14:30', '15:00']
-      },
-      {
-        id: 'PK_205',
-        name: 'Phòng khám 205 - Can thiệp tim mạch & Đau ngực',
-        location: 'Phòng 205 - Tầng 2, Nhà A2',
-        timeSlots: ['08:00', '08:30', '09:00', '09:30', '10:00', '13:30', '14:00', '14:30', '15:00', '15:30']
-      }
-    ]
-  },
-  {
-    id: 'TIEU_HOA',
-    name: 'Khoa Tiêu Hóa - Gan Mật',
-    symptoms: 'Đau âm ỉ vùng thượng vị sau ăn, ợ hơi ợ chua, trào ngược thực quản, chướng bụng đầy hơi, vàng da...',
-    area: 'Khu Khám Bệnh (Tòa A1)',
-    clinics: [
-      {
-        id: 'PK_305',
-        name: 'Phòng khám 305 - Tiêu hóa tổng quát',
-        location: 'Phòng 305 - Tầng 3, Nhà A1',
-        timeSlots: ['07:30', '08:00', '08:30', '09:00', '09:30', '10:00', '13:30', '14:00', '14:30', '15:00']
-      },
-      {
-        id: 'PK_306',
-        name: 'Phòng khám 306 - Gan Mật & Tụy',
-        location: 'Phòng 306 - Tầng 3, Nhà A1',
-        timeSlots: ['08:00', '08:30', '09:00', '09:30', '10:00', '13:30', '14:00', '14:30', '15:00', '15:30']
-      }
-    ]
-  },
-  {
-    id: 'CO_XUONG_KHOP',
-    name: 'Khoa Cơ Xương Khớp',
-    symptoms: 'Đau sưng khớp gối, thoái hóa khớp, đau lưng dưới, đau mỏi vai gáy, thoát vị đĩa đệm, hạn chế vận động...',
-    area: 'Khu Khám Bệnh (Tòa B)',
-    clinics: [
-      {
-        id: 'CXK_P102',
-        name: 'Phòng khám 102 - Cơ Xương Khớp & Chấn thương',
-        location: 'Phòng 102 - Tầng 1, Nhà B',
-        timeSlots: ['07:30', '08:00', '08:30', '09:00', '09:30', '10:00', '13:30', '14:00', '14:30', '15:00']
-      },
-      {
-        id: 'CXK_P103',
-        name: 'Phòng khám 103 - Cột sống & Thoát vị',
-        location: 'Phòng 103 - Tầng 1, Nhà B',
-        timeSlots: ['08:00', '08:30', '09:00', '09:30', '10:00', '13:30', '14:00', '14:30', '15:00', '15:30']
-      }
-    ]
-  }
-];
-
-const today = (offsetDays = 0) => {
-  const now = new Date();
-  now.setDate(now.getDate() + offsetDays);
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
+const localDate = (date = new Date()) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+};
+
+const initialPatientForm = {
+  full_name: "",
+  dob: "",
+  gender: "OTHER",
+  address: "",
+  identity_card: "",
+  insurance_number: "",
 };
 
 export default function PatientBooking() {
   const { user } = useAuth();
+  const [patients, setPatients] = useState([]);
+  const [selectedPatientId, setSelectedPatientId] = useState("");
+  const [patientForm, setPatientForm] = useState(initialPatientForm);
+  const [showPatientForm, setShowPatientForm] = useState(false);
+  const [appointmentDate, setAppointmentDate] = useState(localDate());
+  const [availability, setAvailability] = useState([]);
+  const [selectedShift, setSelectedShift] = useState("");
+  const [appointmentTime, setAppointmentTime] = useState("");
+  const [loadingPatients, setLoadingPatients] = useState(true);
+  const [loadingAvailability, setLoadingAvailability] = useState(true);
+  const [savingPatient, setSavingPatient] = useState(false);
+  const [booking, setBooking] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
-  const [searchSpecialty, setSearchSpecialty] = useState('');
-  const [selectedSpecialtyId, setSelectedSpecialtyId] = useState('Y_HOC_CO_TRUYEN');
-  const [selectedDate, setSelectedDate] = useState(today(1));
-  const [selectedClinicId, setSelectedClinicId] = useState('YHCT_P311');
-  const [selectedTimeSlot, setSelectedTimeSlot] = useState('13:30');
-  const [isAreaExpanded, setIsAreaExpanded] = useState(true);
-  const [confirmed, setConfirmed] = useState(false);
-
-  // Lọc chuyên khoa theo từ khóa tìm kiếm (theo tên hoặc triệu chứng)
-  const filteredSpecialties = BOOKING_SPECIALTIES.filter(spec => {
-    const term = searchSpecialty.toLowerCase().trim();
-    if (!term) return true;
-    return (
-      spec.name.toLowerCase().includes(term) ||
-      spec.symptoms.toLowerCase().includes(term)
-    );
-  });
-
-  const selectedSpecialty = BOOKING_SPECIALTIES.find(
-    s => s.id === selectedSpecialtyId
-  ) || BOOKING_SPECIALTIES[0];
-
-  const selectedClinic = selectedSpecialty?.clinics.find(
-    c => c.id === selectedClinicId
+  const selectedPatient = useMemo(
+    () => patients.find((patient) => String(patient.patient_id) === selectedPatientId),
+    [patients, selectedPatientId],
   );
+  const selectedAvailability =
+    selectedShift === "" ? null : availability[Number(selectedShift)] || null;
 
-  const handleSelectSpecialty = (spec) => {
-    setSelectedSpecialtyId(spec.id);
-    // Tự động chọn phòng khám và khung giờ đầu tiên của chuyên khoa đó
-    if (spec.clinics && spec.clinics.length > 0) {
-      setSelectedClinicId(spec.clinics[0].id);
-      setSelectedTimeSlot(spec.clinics[0].timeSlots[0] || '');
-    } else {
-      setSelectedClinicId('');
-      setSelectedTimeSlot('');
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadPatients = async () => {
+      setLoadingPatients(true);
+      try {
+        const response = await api.get("/patients");
+        if (!response.data?.success || !Array.isArray(response.data.data)) {
+          throw new Error("Phản hồi danh sách hồ sơ không hợp lệ");
+        }
+
+        if (!cancelled) {
+          const ownPatients = response.data.data;
+          setPatients(ownPatients);
+          setSelectedPatientId((current) =>
+            ownPatients.some((patient) => String(patient.patient_id) === current)
+              ? current
+              : String(ownPatients[0]?.patient_id || ""),
+          );
+        }
+      } catch (requestError) {
+        if (!cancelled) {
+          setError(
+            requestError.response?.data?.message ||
+              requestError.message ||
+              "Không thể tải hồ sơ bệnh nhân",
+          );
+        }
+      } finally {
+        if (!cancelled) setLoadingPatients(false);
+      }
+    };
+
+    loadPatients();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadAvailability = async () => {
+      setLoadingAvailability(true);
+      setAvailability([]);
+      setSelectedShift("");
+      try {
+        const response = await api.get("/patients/availability", {
+          params: { date: appointmentDate },
+        });
+        if (!response.data?.success || !Array.isArray(response.data.data)) {
+          throw new Error("Phản hồi lịch trực không hợp lệ");
+        }
+        if (!cancelled) setAvailability(response.data.data);
+      } catch (requestError) {
+        if (!cancelled) {
+          setError(
+            requestError.response?.data?.message ||
+              requestError.message ||
+              "Không thể tải lịch trực bác sĩ",
+          );
+        }
+      } finally {
+        if (!cancelled) setLoadingAvailability(false);
+      }
+    };
+
+    loadAvailability();
+    return () => {
+      cancelled = true;
+    };
+  }, [appointmentDate]);
+
+  const createPatient = async (event) => {
+    event.preventDefault();
+    setError("");
+    setSuccess("");
+    setSavingPatient(true);
+
+    try {
+      const response = await api.post("/patients", patientForm);
+      if (!response.data?.success || !response.data?.data?.patient_id) {
+        throw new Error(response.data?.message || "Không tạo được hồ sơ bệnh nhân");
+      }
+
+      const newPatient = response.data.data;
+      setPatients((current) => [newPatient, ...current]);
+      setSelectedPatientId(String(newPatient.patient_id));
+      setPatientForm(initialPatientForm);
+      setShowPatientForm(false);
+      setSuccess(`Đã tạo hồ sơ ${newPatient.full_name}. Bạn có thể chọn hồ sơ này để đặt lịch.`);
+    } catch (requestError) {
+      setError(
+        requestError.response?.data?.message ||
+          requestError.message ||
+          "Không thể tạo hồ sơ bệnh nhân",
+      );
+    } finally {
+      setSavingPatient(false);
     }
-    setConfirmed(false);
   };
 
-  const handleSelectSlot = (clinicId, slot) => {
-    setSelectedClinicId(clinicId);
-    setSelectedTimeSlot(slot);
-    setConfirmed(false);
-  };
+  const createAppointment = async (event) => {
+    event.preventDefault();
+    setError("");
+    setSuccess("");
 
-  // Chỉ xem bản nháp, tuyệt đối không xác nhận đã tạo lịch hẹn.
-  const handlePreviewBooking = (e) => {
-    e.preventDefault();
-    if (!selectedSpecialty || !selectedClinic || !selectedTimeSlot ||
-        !selectedDate || selectedDate < today(1) || selectedDate > today(7)) {
-      window.alert('Vui lòng chọn chuyên khoa, phòng khám, khung giờ và ngày trong 1–7 ngày tới.');
+    if (!selectedPatient || !selectedAvailability || !appointmentTime) {
+      setError("Vui lòng chọn hồ sơ bệnh nhân, ca trực và giờ khám.");
       return;
     }
-    setConfirmed(true);
+
+    setBooking(true);
+    try {
+      const response = await api.post("/patients/appointments", {
+        patient_id: selectedPatient.patient_id,
+        doctor_id: selectedAvailability.doctor_id,
+        room_id: selectedAvailability.room_id,
+        appointment_date: appointmentDate,
+        appointment_time: appointmentTime,
+      });
+
+      if (!response.data?.success || !response.data?.data?.appointment_id) {
+        throw new Error(response.data?.message || "Không tạo được lịch hẹn");
+      }
+
+      setSuccess(
+        `Đặt lịch thành công cho ${selectedPatient.full_name}. Mã lịch hẹn: ${response.data.data.appointment_id}.`,
+      );
+    } catch (requestError) {
+      setError(
+        requestError.response?.data?.message ||
+          requestError.message ||
+          "Không thể đặt lịch khám",
+      );
+    } finally {
+      setBooking(false);
+    }
   };
 
-  const handleResetBooking = () => {
-    setConfirmed(false);
-  };
-
-  // React hooks must run in the same order for every render.
   if (!user) {
     return <Navigate to="/login?role=patient&redirect=/patient/booking" replace />;
   }
-  if (String(user.role).toUpperCase() !== 'PATIENT') {
-    return <div className="max-w-2xl mx-auto p-8 text-amber-800">Chức năng này dành cho tài khoản bệnh nhân.</div>;
+  if (String(user.role).toUpperCase() !== "PATIENT") {
+    return (
+      <div className="mx-auto max-w-2xl p-8 text-amber-800">
+        Chức năng này dành cho tài khoản bệnh nhân.
+      </div>
+    );
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
-      {/* Header điều hướng */}
-      <div className="flex items-center justify-between gap-4 mb-6">
-        <Link
-          to="/patient"
-          className="inline-flex items-center gap-2 text-sm text-[#004282] font-semibold hover:underline"
-        >
-          <ArrowLeft size={17} />
-          Quay lại Cổng Người Bệnh
-        </Link>
-        <span className="text-xs text-slate-500 bg-white px-3 py-1.5 rounded-lg border border-slate-200">
-          Chọn lịch tham khảo · Chưa mở đặt lịch
-        </span>
-      </div>
+    <div className="mx-auto max-w-4xl space-y-6 px-4 py-8">
+      <Link
+        to="/patient"
+        className="inline-flex items-center gap-2 text-sm font-semibold text-[#004282] hover:underline"
+      >
+        <ArrowLeft size={17} />
+        Quay lại Cổng Người Bệnh
+      </Link>
 
-      <div className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
-          Lựa Chọn Lịch Khám Theo Chuyên Khoa
+      <header>
+        <h1 className="text-2xl font-extrabold text-slate-900">
+          Đặt lịch khám
         </h1>
-        <p className="text-slate-500 text-sm mt-1">
-          Xem trước lựa chọn chuyên khoa, phòng khám và khung giờ tham khảo. Chưa tạo lịch hẹn trên hệ thống.
+        <p className="mt-1 text-sm text-slate-600">
+          Chọn hồ sơ bệnh nhân cần khám. Một tài khoản có thể quản lý nhiều hồ sơ.
         </p>
-      </div>
+      </header>
 
-      <div role="status" className="mb-6 flex gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-        <AlertCircle className="h-5 w-5 shrink-0" />
-        <p><strong>Chức năng đặt lịch đang chờ backend.</strong> Danh sách phòng khám và khung giờ là dữ liệu giao diện minh họa, không phải lịch trống đã được kiểm chứng. Không có thông tin nào được gửi hoặc đặt chỗ.</p>
-      </div>
-
-      {confirmed ? (
-        /* =================== BẢN XEM TRƯỚC, CHƯA ĐẶT LỊCH =================== */
-        <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-10 max-w-2xl mx-auto text-center shadow-xl space-y-6 animate-fade-in">
-          <div className="w-16 h-16 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mx-auto shadow-inner">
-            <AlertCircle className="w-10 h-10" />
-          </div>
-
-          <div>
-            <h2 className="text-2xl font-black text-slate-900">
-              Bản Xem Trước Yêu Cầu Đặt Lịch
-            </h2>
-            <p className="text-sm text-slate-600 mt-1">
-              Chưa gửi yêu cầu, chưa được xác nhận và chưa có lịch hẹn nào được tạo.
-            </p>
-          </div>
-
-          {/* Phiếu hẹn khám điện tử */}
-          <div className="bg-gradient-to-br from-emerald-50 to-teal-50/40 border-2 border-emerald-300 rounded-2xl p-6 text-left relative overflow-hidden">
-            <div className="flex items-start justify-between gap-4 border-b border-emerald-200/80 pb-4 mb-4">
-              <div>
-                <span className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider bg-emerald-100/80 px-2 py-0.5 rounded">
-                  Bản Nháp Thông Tin Đặt Khám
-                </span>
-                <div className="text-lg font-black text-amber-800 tracking-wider mt-1.5">
-                  CHƯA CÓ MÃ LỊCH HẸN
-                </div>
-              </div>
-              <div className="p-2 bg-amber-100 rounded-xl text-amber-800">
-                <AlertCircle className="w-9 h-9" />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-slate-700">
-              <div>
-                <span className="text-slate-500 block">Họ và tên người bệnh:</span>
-                <strong className="text-sm text-slate-900">{user.fullName}</strong>
-              </div>
-              <div>
-                <span className="text-slate-500 block">Mã bệnh nhân:</span>
-                <span className="font-mono font-bold text-slate-900">{user.patient_id ?? user.patientId ?? 'Chưa có'}</span>
-              </div>
-              <div>
-                <span className="text-slate-500 block">Chuyên khoa:</span>
-                <strong className="text-slate-900">{selectedSpecialty?.name}</strong>
-              </div>
-              <div>
-                <span className="text-slate-500 block">Ngày hẹn khám:</span>
-                <strong className="text-emerald-800 font-bold">{selectedDate}</strong>
-              </div>
-              <div className="sm:col-span-2">
-                <span className="text-slate-500 block">Phòng khám tiếp nhận:</span>
-                <strong className="text-slate-900">{selectedClinic?.name}</strong>
-                <p className="text-[11px] text-slate-500 mt-0.5">{selectedSpecialty?.area} • {selectedClinic?.location}</p>
-              </div>
-              <div className="sm:col-span-2 p-2.5 bg-white rounded-xl border border-emerald-200 flex items-center justify-between">
-                <span className="font-semibold text-slate-700">Khung giờ đã chọn (tham khảo):</span>
-                <span className="text-base font-black text-[#0c5936] px-3 py-1 bg-emerald-100 rounded-lg">
-                  {selectedTimeSlot}
-                </span>
-              </div>
-            </div>
-
-            <div className="mt-4 pt-3 border-t border-emerald-200 text-[11px] text-emerald-900 flex items-start gap-2">
-              <AlertCircle className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
-              <span>
-                Đây chỉ là bản xem trước trên trình duyệt. Không sử dụng bản này để đến khám hoặc nhận số thứ tự. Cần backend cung cấp API đặt lịch và xác nhận hợp lệ.
-              </span>
-            </div>
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
-            <button
-              onClick={handleResetBooking}
-              className="px-6 py-2.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition"
-            >
-              Chỉnh sửa lựa chọn
-            </button>
-            <Link
-              to="/patient"
-              className="px-6 py-2.5 rounded-xl text-xs font-bold bg-[#004282] hover:bg-[#003466] text-white shadow-md transition"
-            >
-              Về Cổng Bệnh Nhân
-            </Link>
-          </div>
-        </div>
-      ) : (
-        /* =================== FORM CHỌN CHUYÊN KHOA & PHÒNG KHÁM =================== */
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* CỘT TRÁI (8/12): CHỌN CHUYÊN KHOA & DANH SÁCH PHÒNG KHÁM KHUNG GIỜ */}
-          <div className="lg:col-span-8 space-y-6">
-            {/* KHỐI 1: CHỌN NGÀY KHÁM */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <CalendarDays className="w-5 h-5 text-[#004282]" />
-                <div>
-                  <h3 className="font-bold text-slate-800 text-sm">Chọn ngày khám</h3>
-                  <p className="text-xs text-slate-500">Chọn ngày tham khảo từ 1–7 ngày tới</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="date"
-                  min={today(1)}
-                  max={today(7)}
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className="border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-[#004282]"
-                />
-                <button
-                  type="button"
-                  onClick={() => setSelectedDate(today(1))}
-                  className="px-2.5 py-2 text-xs font-semibold rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition"
-                >
-                  Ngày mai
-                </button>
-              </div>
-            </div>
-
-            {/* KHỐI 2: DANH SÁCH CHUYÊN KHOA (KÈM TRIỆU CHỨNG) NHƯ HÌNH */}
-            <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-              <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <Stethoscope className="w-5 h-5 text-[#004282]" />
-                  <h3 className="font-bold text-slate-800 text-sm">
-                    1. Chọn Chuyên Khoa Theo Triệu Chứng
-                  </h3>
-                </div>
-                {/* Thanh tìm kiếm nhanh */}
-                <div className="relative w-full sm:w-64">
-                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    placeholder="Tìm tên khoa hoặc triệu chứng..."
-                    value={searchSpecialty}
-                    onChange={(e) => setSearchSpecialty(e.target.value)}
-                    className="w-full pl-9 pr-3 py-1.5 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-[#004282] focus:ring-2 focus:ring-blue-100"
-                  />
-                </div>
-              </div>
-
-              {/* Danh sách cuộn chuyên khoa */}
-              <div className="max-h-72 overflow-y-auto divide-y divide-slate-100">
-                {filteredSpecialties.length === 0 ? (
-                  <div className="p-8 text-center text-xs text-slate-400">
-                    Không tìm thấy chuyên khoa phù hợp với từ khóa "{searchSpecialty}".
-                  </div>
-                ) : (
-                  filteredSpecialties.map((spec) => {
-                    const isSelected = selectedSpecialtyId === spec.id;
-                    return (
-                      <div
-                        key={spec.id}
-                        onClick={() => handleSelectSpecialty(spec)}
-                        className={`p-3.5 cursor-pointer transition-all ${
-                          isSelected
-                            ? 'bg-slate-100/90 border-l-4 border-[#0c5936] shadow-sm'
-                            : 'hover:bg-slate-50/80 border-l-4 border-transparent'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <h4 className={`text-sm font-bold ${isSelected ? 'text-[#0c5936]' : 'text-slate-800'}`}>
-                            {spec.name}
-                          </h4>
-                          {isSelected && (
-                            <span className="text-[10px] font-bold bg-[#0c5936] text-white px-2 py-0.5 rounded-full">
-                              Đang chọn
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-amber-600 mt-1 leading-snug">
-                          <span className="font-bold">Triệu chứng:</span> {spec.symptoms}
-                        </p>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-
-            {/* KHỐI 3: DANH SÁCH PHÒNG KHÁM VÀ KHUNG GIỜ (GIỐNG HỆT HÌNH ẢNH MẪU) */}
-            {selectedSpecialty && (
-              <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-md">
-                {/* Header Khu Vực Phòng Khám (Màu xanh đậm theo mẫu hình) */}
-                <div
-                  onClick={() => setIsAreaExpanded(!isAreaExpanded)}
-                  className="bg-[#0c5936] text-white px-4 py-3.5 flex items-center justify-between cursor-pointer select-none"
-                >
-                  <div className="flex items-center gap-2">
-                    <Building2 className="w-4 h-4 text-emerald-200" />
-                    <h3 className="font-bold text-sm tracking-wide">
-                      {selectedSpecialty.area}
-                    </h3>
-                    <span className="text-[11px] bg-emerald-800/80 text-emerald-100 px-2 py-0.5 rounded-full font-medium ml-1">
-                      {selectedSpecialty.name}
-                    </span>
-                  </div>
-                  <button type="button" className="text-emerald-100 hover:text-white">
-                    {isAreaExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                  </button>
-                </div>
-
-                {/* Danh sách phòng khám thuộc khu vực */}
-                {isAreaExpanded && (
-                  <div className="bg-white divide-y divide-emerald-100">
-                    {selectedSpecialty.clinics.map((clinic) => {
-                      return (
-                        <div key={clinic.id} className="transition-colors">
-                          {/* Thanh tiêu đề Phòng khám (Màu xanh lá nhạt như mẫu hình) */}
-                          <div className="bg-[#e6f4ea] text-[#0c5936] px-4 py-2.5 flex items-center justify-between text-xs font-bold border-b border-emerald-100">
-                            <div className="flex items-center gap-1.5">
-                              <span>{clinic.name}</span>
-                            </div>
-                            <ChevronUp size={16} className="text-emerald-700" />
-                          </div>
-
-                          {/* Danh sách các button khung giờ của phòng khám */}
-                          <div className="p-4 bg-white">
-                            <div className="flex flex-wrap gap-2">
-                              {clinic.timeSlots.map((slot) => {
-                                const isChosen =
-                                  selectedClinicId === clinic.id &&
-                                  selectedTimeSlot === slot;
-
-                                return (
-                                  <button
-                                    key={slot}
-                                    type="button"
-                                    onClick={() => handleSelectSlot(clinic.id, slot)}
-                                    className={`px-3.5 py-2 rounded-lg text-xs font-semibold transition-all ${
-                                      isChosen
-                                        ? 'bg-[#0c5936] text-white border-2 border-[#0c5936] shadow-md scale-105'
-                                        : 'bg-white text-slate-700 border border-emerald-300 hover:border-emerald-600 hover:bg-emerald-50/50'
-                                    }`}
-                                  >
-                                    {slot}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* CỘT PHẢI (4/12): TÓM TẮT THÔNG TIN & XÁC NHẬN */}
-          <div className="lg:col-span-4 space-y-4 lg:sticky lg:top-4">
-            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-5">
-              {/* Thông tin người bệnh */}
-              <div>
-                <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2 mb-3">
-                  <UserCheck className="w-4 h-4 text-[#004282]" />
-                  Người bệnh đặt lịch
-                </h3>
-                <div className="p-3 bg-blue-50/70 rounded-xl border border-blue-100 text-xs space-y-1">
-                  <div className="font-bold text-slate-900 text-sm">{user.fullName}</div>
-                  <div className="text-slate-600 flex items-center justify-between">
-                    <span>Mã BN:</span>
-                    <strong className="font-mono text-slate-800">{user.patient_id ?? user.patientId ?? 'Chưa có'}</strong>
-                  </div>
-                  <div className="text-slate-600 flex items-center justify-between">
-                    <span>Số điện thoại:</span>
-                    <strong className="text-slate-800">{user.phone || 'Chưa cập nhật'}</strong>
-                  </div>
-                </div>
-              </div>
-
-              {/* Thông tin lượt khám đã chọn */}
-              <div className="space-y-3 pt-3 border-t border-slate-100 text-xs">
-                <h4 className="font-bold text-slate-800 uppercase tracking-wider text-[11px]">
-                  Chi tiết lượt khám
-                </h4>
-
-                <div className="flex items-start justify-between gap-2">
-                  <span className="text-slate-500">Chuyên khoa:</span>
-                  <strong className="text-right text-slate-900 font-semibold max-w-[180px]">
-                    {selectedSpecialty?.name || 'Chưa chọn'}
-                  </strong>
-                </div>
-
-                <div className="flex items-start justify-between gap-2">
-                  <span className="text-slate-500">Ngày khám:</span>
-                  <strong className="text-right text-emerald-800 font-bold">
-                    {selectedDate}
-                  </strong>
-                </div>
-
-                <div className="flex items-start justify-between gap-2">
-                  <span className="text-slate-500">Khu vực:</span>
-                  <span className="text-right text-slate-700 font-medium">
-                    {selectedSpecialty?.area}
-                  </span>
-                </div>
-
-                <div className="flex items-start justify-between gap-2">
-                  <span className="text-slate-500">Phòng khám:</span>
-                  <strong className="text-right text-slate-900">
-                    {selectedClinic?.name || 'Chưa chọn phòng'}
-                  </strong>
-                </div>
-
-                <div className="flex items-center justify-between gap-2 p-2.5 bg-emerald-50 rounded-xl border border-emerald-200">
-                  <span className="font-semibold text-emerald-900">Khung giờ:</span>
-                  <span className="text-sm font-black text-[#0c5936] px-2.5 py-0.5 bg-white rounded-lg border border-emerald-300">
-                    {selectedTimeSlot || '--:--'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Nút gửi đặt lịch */}
-              <button
-                type="button"
-                onClick={handlePreviewBooking}
-                disabled={!selectedTimeSlot || selectedDate < today(1) || selectedDate > today(7)}
-                className="w-full bg-[#0c5936] hover:bg-[#0a482b] disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold py-3.5 px-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 text-sm"
-              >
-                <Clock3 className="w-4 h-4" />
-                Xem bản nháp (chưa gửi)
-              </button>
-
-              <p className="text-[11px] text-slate-400 text-center leading-tight">
-                Các khung giờ minh họa không phản ánh khả năng đặt chỗ thực tế. Chưa có yêu cầu nào được gửi.
-              </p>
-            </div>
-          </div>
+      {error && (
+        <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          {error}
         </div>
       )}
+      {success && (
+        <div role="status" className="rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-800">
+          {success}
+        </div>
+      )}
+
+      <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="font-bold text-slate-900">Hồ sơ bệnh nhân</h2>
+            <p className="text-sm text-slate-500">
+              Lịch hẹn sẽ được gắn với hồ sơ đang chọn.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setShowPatientForm((visible) => !visible);
+              setError("");
+              setSuccess("");
+            }}
+            className="inline-flex items-center gap-2 rounded-lg bg-[#004282] px-4 py-2 text-sm font-semibold text-white hover:bg-[#003466]"
+          >
+            <UserPlus size={16} />
+            {showPatientForm ? "Đóng" : "Thêm hồ sơ"}
+          </button>
+        </div>
+
+        {loadingPatients ? (
+          <p className="text-sm text-slate-500">Đang tải hồ sơ...</p>
+        ) : patients.length ? (
+          <label className="block text-sm font-medium text-slate-700">
+            Người bệnh
+            <select
+              value={selectedPatientId}
+              onChange={(event) => {
+                setSelectedPatientId(event.target.value);
+                setSuccess("");
+              }}
+              className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2"
+            >
+              {patients.map((patient) => (
+                <option key={patient.patient_id} value={patient.patient_id}>
+                  {patient.full_name} — Mã BN {patient.patient_id}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : (
+          <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
+            Tài khoản chưa có hồ sơ bệnh nhân. Hãy tạo hồ sơ trước khi đặt lịch.
+          </p>
+        )}
+
+        {showPatientForm && (
+          <form onSubmit={createPatient} className="grid gap-3 border-t border-slate-100 pt-4 sm:grid-cols-2">
+            <label className="text-sm font-medium text-slate-700">
+              Họ tên *
+              <input
+                required
+                maxLength={100}
+                value={patientForm.full_name}
+                onChange={(event) => setPatientForm({ ...patientForm, full_name: event.target.value })}
+                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
+              />
+            </label>
+            <label className="text-sm font-medium text-slate-700">
+              Ngày sinh *
+              <input
+                required
+                type="date"
+                max={localDate()}
+                value={patientForm.dob}
+                onChange={(event) => setPatientForm({ ...patientForm, dob: event.target.value })}
+                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
+              />
+            </label>
+            <label className="text-sm font-medium text-slate-700">
+              Giới tính *
+              <select
+                value={patientForm.gender}
+                onChange={(event) => setPatientForm({ ...patientForm, gender: event.target.value })}
+                className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2"
+              >
+                <option value="MALE">Nam</option>
+                <option value="FEMALE">Nữ</option>
+                <option value="OTHER">Khác</option>
+              </select>
+            </label>
+            <label className="text-sm font-medium text-slate-700">
+              Địa chỉ
+              <input
+                maxLength={500}
+                value={patientForm.address}
+                onChange={(event) => setPatientForm({ ...patientForm, address: event.target.value })}
+                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
+              />
+            </label>
+            <label className="text-sm font-medium text-slate-700">
+              CCCD/VNeID
+              <input
+                maxLength={20}
+                value={patientForm.identity_card}
+                onChange={(event) => setPatientForm({ ...patientForm, identity_card: event.target.value })}
+                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
+              />
+            </label>
+            <label className="text-sm font-medium text-slate-700">
+              Mã BHYT
+              <input
+                maxLength={20}
+                value={patientForm.insurance_number}
+                onChange={(event) => setPatientForm({ ...patientForm, insurance_number: event.target.value })}
+                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
+              />
+            </label>
+            <div className="sm:col-span-2">
+              <button
+                type="submit"
+                disabled={savingPatient}
+                className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-60"
+              >
+                {savingPatient ? "Đang lưu..." : "Tạo hồ sơ"}
+              </button>
+            </div>
+          </form>
+        )}
+      </section>
+
+      <form onSubmit={createAppointment} className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h2 className="font-bold text-slate-900">Thông tin lịch khám</h2>
+
+        {selectedPatient && (
+          <div className="rounded-lg bg-blue-50 p-3 text-sm text-blue-900">
+            Đặt lịch cho <strong>{selectedPatient.full_name}</strong> (Mã BN {selectedPatient.patient_id})
+          </div>
+        )}
+
+        <label className="block text-sm font-medium text-slate-700">
+          Ngày khám *
+          <span className="relative mt-1 block">
+            <CalendarDays size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              required
+              type="date"
+              min={localDate()}
+              value={appointmentDate}
+              onChange={(event) => {
+                setAppointmentDate(event.target.value);
+                setError("");
+                setSuccess("");
+              }}
+              className="w-full rounded-lg border border-slate-300 py-2 pl-9 pr-3"
+            />
+          </span>
+        </label>
+
+        <label className="block text-sm font-medium text-slate-700">
+          Bác sĩ, khoa, phòng và ca trực *
+          <select
+            required
+            value={selectedShift}
+            onChange={(event) => setSelectedShift(event.target.value)}
+            disabled={loadingAvailability || availability.length === 0}
+            className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 disabled:bg-slate-100"
+          >
+            <option value="">
+              {loadingAvailability
+                ? "Đang tải lịch trực..."
+                : availability.length
+                  ? "Chọn ca trực"
+                  : "Không có ca trực phòng khám trong ngày này"}
+            </option>
+            {availability.map((shift, index) => (
+              <option key={`${shift.doctor_id}-${shift.room_id}-${shift.start_time}-${index}`} value={index}>
+                {shift.department_name} — BS. {shift.doctor_name} — {shift.room_name} ({String(shift.start_time).slice(0, 5)}–{String(shift.end_time).slice(0, 5)})
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="block text-sm font-medium text-slate-700">
+          Giờ khám *
+          <input
+            required
+            type="time"
+            value={appointmentTime}
+            onChange={(event) => setAppointmentTime(event.target.value)}
+            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
+          />
+        </label>
+
+        {selectedAvailability && (
+          <p className="text-xs text-slate-500">
+            Giờ khám phải nằm trong ca trực của bác sĩ. Hệ thống sẽ kiểm tra lại lịch khi lưu.
+          </p>
+        )}
+
+        <button
+          type="submit"
+          disabled={
+            booking ||
+            loadingPatients ||
+            patients.length === 0 ||
+            !selectedPatient ||
+            loadingAvailability ||
+            !selectedAvailability
+          }
+          className="rounded-lg bg-[#004282] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#003466] disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {booking ? "Đang đặt lịch..." : "Xác nhận đặt lịch"}
+        </button>
+      </form>
     </div>
   );
 }

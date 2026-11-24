@@ -2,9 +2,11 @@ const db = require("../config/db.config");
 
 const findByUsername = async (username) => {
   const [rows] = await db.query(
-    `SELECT user_id, username, password_hash, role, is_active
-     FROM users
-     WHERE username = ?
+    `SELECT u.user_id, u.username, u.password_hash, u.role, u.is_active,
+            s.staff_id
+     FROM users u
+     LEFT JOIN staff s ON s.user_id = u.user_id
+     WHERE u.username = ?
      LIMIT 1`,
     [username],
   );

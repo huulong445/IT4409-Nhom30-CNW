@@ -161,7 +161,7 @@ JOIN (
     UNION ALL SELECT 10, 2, 7                            -- KTV Tuấn: xét nghiệm, ca chiều
     UNION ALL SELECT 11, 1, 8                            -- KTV Yến: CĐHA, ca sáng
     UNION ALL SELECT 11, 2, 8                            -- KTV Yến: CĐHA, ca chiều
-) p
+) 
 WHERE DAYOFWEEK(d.work_date) BETWEEN 2 AND 6
   AND d.work_date <= '2026-10-30';
 

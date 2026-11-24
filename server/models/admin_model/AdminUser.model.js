@@ -15,10 +15,11 @@ const getAllUsers = async () => {
 // 2. Lấy tài khoản theo ID
 const getUserById = async (id) => {
   const [rows] = await db.query(
-    `SELECT user_id, username, email, phone, role,
-            is_active, created_at, updated_at
-     FROM users
-     WHERE user_id = ?`,
+    `SELECT u.user_id, u.username, u.email, u.phone, u.role,
+            u.is_active, u.created_at, u.updated_at, s.staff_id
+     FROM users u
+     LEFT JOIN staff s ON s.user_id = u.user_id
+     WHERE u.user_id = ?`,
     [id],
   );
 

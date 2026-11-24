@@ -58,6 +58,7 @@ const login = async (req, res) => {
           user_id: user.user_id,
           username: user.username,
           role: user.role,
+          staff_id: user.staff_id ?? null,
         },
       },
     });

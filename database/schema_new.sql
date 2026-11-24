@@ -28,6 +28,9 @@ DROP TABLE IF EXISTS building;
 DROP TABLE IF EXISTS patients;
 DROP TABLE IF EXISTS departments;
 DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS invoices;
+DROP TABLE IF EXISTS invoice_items;
+DROP TABLE IF EXISTS payment_transactions;
 
 SET FOREIGN_KEY_CHECKS = 1;
 
@@ -280,6 +283,79 @@ CREATE TABLE staff_shifts (
     CONSTRAINT fk_staff_shifts_room FOREIGN KEY (room_id) 
         REFERENCES rooms(room_id) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT uq_staff_shift_date UNIQUE (staff_id, shift_id, work_date) -- 1 NV không trực 2 phòng cùng ca
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------------------------------
+-- 16. BẢNG INVOICES (Hóa đơn)
+-- -----------------------------------------------------------------------------
+CREATE TABLE invoices (
+    invoice_id INT AUTO_INCREMENT PRIMARY KEY,
+    appointment_id INT NOT NULL UNIQUE,
+    status ENUM('DRAFT', 'ISSUED', 'PARTIALLY_PAID', 'PAID', 'CANCELLED')
+        NOT NULL DEFAULT 'DRAFT',
+    created_by INT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_invoices_appointment
+        FOREIGN KEY (appointment_id) REFERENCES appointments(appointment_id)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_invoices_created_by
+        FOREIGN KEY (created_by) REFERENCES users(user_id)
+        ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------------------------------
+-- 17. BẢNG INVOICE_ITEMS (Chi tiết hóa đơn)
+-- -----------------------------------------------------------------------------
+CREATE TABLE invoice_items (
+    item_id INT AUTO_INCREMENT PRIMARY KEY,
+    invoice_id INT NOT NULL,
+    item_type ENUM('CONSULTATION', 'MEDICINE', 'LAB', 'OTHER') NOT NULL,
+    description VARCHAR(255) NOT NULL,
+    quantity INT NOT NULL DEFAULT 1,
+    unit_price DECIMAL(12, 0) NOT NULL, -- giá lúc lập hoá đơn
+    prescription_detail_id INT NULL,
+    lab_request_id INT NULL,
+
+    CONSTRAINT fk_invoice_items_invoice
+        FOREIGN KEY (invoice_id) REFERENCES invoices(invoice_id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_invoice_items_prescription
+        FOREIGN KEY (prescription_detail_id)
+        REFERENCES prescription_details(detail_id)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_invoice_items_lab
+        FOREIGN KEY (lab_request_id) REFERENCES lab_requests(lab_request_id)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT chk_invoice_items_quantity CHECK (quantity > 0),
+    CONSTRAINT chk_invoice_items_price CHECK (unit_price >= 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------------------------------
+-- 18. BẢNG PAYMENT_TRANSACTIONS (Giao dịch thanh toán)
+-- -----------------------------------------------------------------------------
+CREATE TABLE payment_transactions (
+    payment_id INT AUTO_INCREMENT PRIMARY KEY,
+    invoice_id INT NOT NULL,
+    payer_user_id INT NULL,
+    received_by_user_id INT NULL,
+    transaction_type ENUM('PAYMENT', 'REFUND') NOT NULL DEFAULT 'PAYMENT',
+    amount DECIMAL(12, 0) NOT NULL,
+    method ENUM('CASH', 'BANK_TRANSFER', 'CARD', 'OTHER') NOT NULL,
+    status ENUM('PENDING', 'SUCCEEDED', 'FAILED') NOT NULL DEFAULT 'PENDING',
+    transaction_ref VARCHAR(100) NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_payments_invoice
+        FOREIGN KEY (invoice_id) REFERENCES invoices(invoice_id)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_payments_payer
+        FOREIGN KEY (payer_user_id) REFERENCES users(user_id)
+        ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT fk_payments_receiver
+        FOREIGN KEY (received_by_user_id) REFERENCES users(user_id)
+        ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT chk_payments_amount CHECK (amount > 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 

@@ -8,9 +8,11 @@ const getAllUsers = async () => {
 };
 const getUserById = async (userId) => {
   const [rows] = await db.query(
-    `SELECT user_id, username, email, phone, role, updated_at
-     FROM users
-     WHERE user_id = ?`,
+    `SELECT u.user_id, u.username, u.email, u.phone, u.role, u.updated_at,
+            s.staff_id
+     FROM users u
+     LEFT JOIN staff s ON s.user_id = u.user_id
+     WHERE u.user_id = ?`,
     [userId],
   );
   return rows[0] || null;

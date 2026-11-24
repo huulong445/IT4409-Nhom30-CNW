@@ -7,12 +7,8 @@ const medicineController = require("../../controllers/admin_controller/AdminMedi
 const router = express.Router();
 const departmentController = require("../../controllers/admin_controller/AdminDepartment.controller");
 const staffController = require("../../controllers/admin_controller/AdminStaff.controller");
-<<<<<<< HEAD
-router.use(authenticate, authorization(ROLES.ADMIN));
-=======
 const scheduleController = require("../../controllers/admin_controller/AdminSchedule.controller");
-router.use(authenticate, requireRole(ROLES.ADMIN));
->>>>>>> origin/Vinh
+router.use(authenticate, authorization(ROLES.ADMIN));
 
 //Quan ly nhan vien
 router.get("/staff", staffController.getAllStaff);
@@ -51,6 +47,5 @@ router.get("/medicines/:id", medicineController.getMedicineById);
 router.post("/medicines", medicineController.createMedicine);
 router.put("/medicines/:id", medicineController.updateMedicine);
 router.delete("/medicines/:id", medicineController.deleteMedicine);
-
 
 module.exports = router;

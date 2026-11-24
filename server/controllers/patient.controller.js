@@ -1,5 +1,23 @@
 const patientModel = require("../models/patient.model");
 
+const getOwnPatients = async (req, res) => {
+  try {
+    const patients = await patientModel.getPatientsByUserId(req.user.user_id);
+
+    return res.status(200).json({
+      success: true,
+      count: patients.length,
+      data: patients,
+    });
+  } catch (error) {
+    console.error("getOwnPatients:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Lỗi server khi lấy danh sách hồ sơ bệnh nhân",
+    });
+  }
+};
+
 const createPatient = async (req, res) => {
   const body = req.body;
   const allowedFields = [
@@ -130,4 +148,4 @@ const createPatient = async (req, res) => {
   }
 };
 
-module.exports = { createPatient };
+module.exports = { getOwnPatients, createPatient };
