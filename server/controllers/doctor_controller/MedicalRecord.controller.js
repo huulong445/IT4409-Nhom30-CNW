@@ -56,6 +56,22 @@ exports.GetMedicalRecordsByPatient = async (req, res) => {
     }
 };
 
+// GET /api/medical-records/patient/
+exports.GetMedicalRecordsByName = async (req, res) => {
+    try {
+        const { full_name } = req.query;
+        const records = await MedicalRecordModel.getByName(full_name);
+
+        return res.status(200).json({ 
+            success: true, 
+            count: records.length, 
+            data: records 
+        });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 // PUT /api/medical-records/:record_id
 exports.UpdateMedicalRecord = async (req, res) => {
     try {

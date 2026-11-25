@@ -6,6 +6,10 @@ const labRequestController = require("../controllers/doctor_controller/LabReques
 const medicalRecordController = require("../controllers/doctor_controller/MedicalRecord.controller");
 const prescriptionController = require("../controllers/doctor_controller/Prescription.controller");
 const doctorController = require("../controllers/doctor_controller/WaitingPatients.controller");
+const {
+    UpdateAppointmentStatus
+} = require("../controllers/doctor_controller/WaitingPatients.controller");
+
 const labResultController = require("../controllers/doctor_controller/LabResult.controller");
 // Middleware xác thực
 const { authenticate } = require("../middlewares/auth.middleware");
@@ -60,6 +64,10 @@ router.get(
   "/medical-records/patient",
   medicalRecordController.GetMedicalRecordsByPatient,
 );
+router.get(
+  "/medical-records/patient/name",
+  medicalRecordController.GetMedicalRecordsByName,
+);
 router.put("/medical-records", medicalRecordController.UpdateMedicalRecord);
 router.delete("/medical-records", medicalRecordController.DeleteMedicalRecord);
 
@@ -79,7 +87,7 @@ router.delete("/prescriptions", prescriptionController.DeletePrescription);
 // 4. ROUTES CHO DOCTOR (Bác sĩ - Bệnh nhân chờ khám)
 // ==========================================
 router.get("/appointments", doctorController.GetWaitingPatients);
-
+router.put("/appointment/status", UpdateAppointmentStatus);
 // GET /api/v1/doctor/lab-results?lab_request_id=12
 router.get("/lab-results", labResultController.GetLabResultById);
 

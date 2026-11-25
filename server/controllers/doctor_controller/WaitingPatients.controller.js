@@ -1,4 +1,7 @@
-const { getWaitingPatientsByDoctorAndDate } = require("../../models/doctor_model/WaitingPatients.model.js");
+const {
+    getWaitingPatientsByDoctorAndDate,
+    updateAppointmentStatus
+} = require("../../models/doctor_model/WaitingPatients.model.js");
 
 exports.GetWaitingPatients = async (req, res) => {
     try {
@@ -35,5 +38,70 @@ exports.GetWaitingPatients = async (req, res) => {
         });
     } catch (error) {
         return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+
+
+// Cập nhật trạng thái appointment
+exports.UpdateAppointmentStatus = async (req, res) => {
+    try {
+        const { appointment_id, status } = req.body;
+        const doctor_id = req.user.staff_id;
+
+        // Kiểm tra bác sĩ
+        if (!doctor_id) {
+            return res.status(403).json({
+                success: false,
+                message: "Tài khoản bác sĩ chưa được liên kết với hồ sơ nhân viên"
+            });
+        }
+
+        // Kiểm tra appointment_id
+        if (!Number.isInteger(Number(appointment_id)) || Number(appointment_id) <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: "appointment_id không hợp lệ"
+            });
+        }
+
+        // Kiểm tra status
+        const validStatuses = [
+            "PENDING",
+            "IN_PROGRESS",
+            "COMPLETED",
+            "CANCELLED"
+        ];
+
+        if (!validStatuses.includes(status)) {
+            return res.status(400).json({
+                success: false,
+                message: "Trạng thái appointment không hợp lệ"
+            });
+        }
+
+        const result = await updateAppointmentStatus(
+            Number(appointment_id),
+            doctor_id,
+            status
+        );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Không tìm thấy lịch hẹn hoặc lịch hẹn không thuộc bác sĩ này"
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Cập nhật trạng thái lịch hẹn thành công"
+        });
+
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: error.message
+        });
     }
 };

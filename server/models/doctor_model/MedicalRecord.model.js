@@ -24,6 +24,20 @@ const MedicalRecordModel = {
         return rows;
     },
 
+    getByName: async (full_name) => {
+    const [rows] = await db.query(
+        `SELECT * FROM medical_records 
+         WHERE patient_id IN (
+             SELECT patient_id 
+             FROM patients 
+             WHERE full_name LIKE ?
+         )
+         ORDER BY created_at DESC`,
+        [`%${full_name}%`]
+    );
+    return rows;
+    },
+
     update: async (record_id, { symptoms, diagnosis_icd10, notes }) => {
         const query = `UPDATE medical_records SET symptoms = ?, diagnosis_icd10 = ?, notes = ? WHERE record_id = ?`;
         const [result] = await db.query(query, [symptoms, diagnosis_icd10, notes, record_id]);

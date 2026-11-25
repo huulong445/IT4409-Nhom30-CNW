@@ -21,34 +21,63 @@ const LabRequestModel = {
     },
 
     // Lấy danh sách chỉ định theo bộ lọc
-    getByFilters: async ({ record_id, patient_id, doctor_id, status }) => {
-        let query = `SELECT * FROM lab_requests WHERE 1=1`;
-        const params = [];
+    getByFilters: async ({ record_id, patient_id, doctor_id, status, full_name }) => {
+    let query = `
+        SELECT 
+            lr.*,
+            mr.appointment_id,
+            p.full_name,
+            p.dob,
+            p.gender,
+            p.insurance_number,
+            s.full_name AS doctor_name,
+            a.appointment_date,
+            a.appointment_time,
+            a.room_id
+        FROM lab_requests lr
+        JOIN medical_records mr 
+            ON lr.record_id = mr.record_id
+        JOIN appointments a 
+            ON mr.appointment_id = a.appointment_id
+        JOIN patients p 
+            ON lr.patient_id = p.patient_id
+        JOIN staff s 
+            ON lr.doctor_id = s.staff_id
+        WHERE 1=1
+    `;
 
-        if (record_id) {
-            query += ` AND record_id = ?`;
-            params.push(record_id);
-        }
+    const params = [];
 
-        if (patient_id) {
-            query += ` AND patient_id = ?`;
-            params.push(patient_id);
-        }
+    if (record_id) {
+        query += ` AND lr.record_id = ?`;
+        params.push(record_id);
+    }
 
-        if (doctor_id) {
-            query += ` AND doctor_id = ?`;
-            params.push(doctor_id);
-        }
+    if (patient_id) {
+        query += ` AND lr.patient_id = ?`;
+        params.push(patient_id);
+    }
 
-        if (status) {
-            query += ` AND status = ?`;
-            params.push(status);
-        }
+    if (doctor_id) {
+        query += ` AND lr.doctor_id = ?`;
+        params.push(doctor_id);
+    }
 
-        const [rows] = await db.query(query, params);
-        return rows;
-    },
+    if (status) {
+        query += ` AND lr.status = ?`;
+        params.push(status);
+    }
 
+    if (full_name) {
+        query += ` AND p.full_name LIKE ?`;
+        params.push(`%${full_name}%`);
+    }
+
+    query += ` ORDER BY lr.created_at DESC`;
+
+    const [rows] = await db.query(query, params);
+    return rows;
+},
     // Lấy chi tiết một chỉ định xét nghiệm
     getById: async (lab_request_id) => {
         const query = `
