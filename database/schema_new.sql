@@ -143,8 +143,9 @@ CREATE TABLE appointments (
         REFERENCES staff(staff_id) ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_appointments_room FOREIGN KEY (room_id) 
         REFERENCES rooms(room_id) ON DELETE RESTRICT ON UPDATE CASCADE,
-    -- Một bác sĩ không có 2 lịch hẹn cùng ngày cùng giờ
-    CONSTRAINT uq_appointments_doctor_slot UNIQUE (doctor_id, appointment_date, appointment_time)
+    -- Cho phép nhiều bệnh nhân đặt cùng khung giờ; mỗi bệnh nhân chỉ đặt một lần với cùng bác sĩ
+    CONSTRAINT uq_appointments_patient_doctor_slot
+        UNIQUE (patient_id, doctor_id, appointment_date, appointment_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------------------------------
@@ -363,6 +364,8 @@ CREATE INDEX idx_users_role ON users(role);
 
 -- Lọc lịch hẹn theo ngày và trạng thái
 CREATE INDEX idx_appointments_date_status ON appointments(appointment_date, status);
+CREATE INDEX idx_appointments_doctor_slot
+    ON appointments(doctor_id, appointment_date, appointment_time);
 
 -- Tra cứu lịch sử bệnh án và chỉ định Lab
 CREATE INDEX idx_medical_records_patient ON medical_records(patient_id);

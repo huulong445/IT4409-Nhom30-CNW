@@ -144,7 +144,7 @@ const createAppointment = async (req, res) => {
     if (error.code === "ER_DUP_ENTRY") {
       return res.status(409).json({
         success: false,
-        message: "Bác sĩ đã có lịch khám vào khung giờ này",
+        message: "Hồ sơ bệnh nhân này đã đặt lịch với bác sĩ vào khung giờ này",
       });
     }
 
