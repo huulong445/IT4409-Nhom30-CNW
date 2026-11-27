@@ -61,6 +61,19 @@ const Sidebar = () => {
     },
   ];
 
+  const receptionistNavItems = [
+    {
+      to: "/receptionist",
+      icon: ClipboardList,
+      label: "Tiếp đón & Điều phối",
+    },
+    {
+      to: "/receptionist/schedule",
+      icon: Calendar,
+      label: "Lịch trực quầy tiếp đón",
+    },
+  ];
+
   const adminNavItems = [
     {
       to: "/admin",
@@ -89,6 +102,16 @@ const Sidebar = () => {
       label: "Quản lý Khoa phòng & Dịch vụ",
     },
     {
+      to: "/admin/schedules",
+      icon: Calendar,
+      label: "Quản lý lịch làm việc",
+    },
+    {
+      to: "/admin/medicines",
+      icon: Pill,
+      label: "Quản lý kho thuốc",
+    },
+    {
       to: "/admin/reports",
       icon: FileSpreadsheet,
       label: "Thống kê & Viện phí",
@@ -99,6 +122,8 @@ const Sidebar = () => {
     ? adminNavItems
     : (user.role === 'PARACLINICAL' || user.role === 'LAB_TECH')
     ? paraclinicalNavItems
+    : user.role === 'RECEPTIONIST'
+    ? receptionistNavItems
     : doctorNavItems;
 
   return (
@@ -112,11 +137,15 @@ const Sidebar = () => {
               ? 'Chế độ Quản trị'
               : (user.role === 'PARACLINICAL' || user.role === 'LAB_TECH')
               ? 'Khu vực Cận lâm sàng'
+              : user.role === 'RECEPTIONIST'
+              ? 'Quầy Tiếp Đón'
               : 'Khu vực Lâm sàng'}
           </div>
           <p className="text-xs text-slate-600 mt-1">
             {user.role === 'ADMIN'
               ? 'Toàn quyền kiểm soát tài khoản và hệ thống'
+              : user.role === 'RECEPTIONIST'
+              ? 'Tiếp nhận bệnh nhân & điều phối khám'
               : [user.departmentName, user.room].filter(Boolean).join(" - ") || "Chưa có thông tin khoa/phòng"}
           </p>
         </div>
@@ -129,7 +158,7 @@ const Sidebar = () => {
               <NavLink
                 key={item.to}
                 to={item.to}
-                end={item.to === "/doctor" || item.to === "/admin" || item.to === "/paraclinical"}
+                end={item.to === "/doctor" || item.to === "/admin" || item.to === "/paraclinical" || item.to === "/receptionist"}
                 className={({ isActive }) => `
                   flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all
                   ${isActive

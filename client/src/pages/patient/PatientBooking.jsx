@@ -44,7 +44,13 @@ export default function PatientBooking() {
   const selectedAvailability =
     selectedShift === "" ? null : availability[Number(selectedShift)] || null;
 
+  const isPatientUser = Boolean(user && String(user.role).toUpperCase() === "PATIENT");
+
   useEffect(() => {
+    if (!isPatientUser) {
+      setLoadingPatients(false);
+      return undefined;
+    }
     let cancelled = false;
 
     const loadPatients = async () => {
@@ -81,9 +87,13 @@ export default function PatientBooking() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [isPatientUser]);
 
   useEffect(() => {
+    if (!isPatientUser) {
+      setLoadingAvailability(false);
+      return undefined;
+    }
     let cancelled = false;
 
     const loadAvailability = async () => {
@@ -115,7 +125,7 @@ export default function PatientBooking() {
     return () => {
       cancelled = true;
     };
-  }, [appointmentDate]);
+  }, [appointmentDate, isPatientUser]);
 
   const createPatient = async (event) => {
     event.preventDefault();
@@ -400,16 +410,47 @@ export default function PatientBooking() {
           </select>
         </label>
 
-        <label className="block text-sm font-medium text-slate-700">
-          Giờ khám *
-          <input
-            required
-            type="time"
-            value={appointmentTime}
-            onChange={(event) => setAppointmentTime(event.target.value)}
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
-          />
-        </label>
+        <div className="block text-sm font-medium text-slate-700">
+          <span>Giờ khám *</span>
+          <div className="mt-1 grid grid-cols-2 gap-3">
+            <select
+              required
+              aria-label="Giờ khám (00-23)"
+              value={appointmentTime ? appointmentTime.split(":")[0] : ""}
+              onChange={(event) => {
+                const hour = event.target.value;
+                const minute = appointmentTime ? appointmentTime.split(":")[1] || "00" : "00";
+                setAppointmentTime(hour ? `${hour}:${minute}` : "");
+              }}
+              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2"
+            >
+              <option value="">Chọn giờ (00h - 23h)</option>
+              {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0")).map((hour) => (
+                <option key={hour} value={hour}>
+                  {hour} giờ
+                </option>
+              ))}
+            </select>
+            <select
+              required
+              aria-label="Phút khám (00-59)"
+              value={appointmentTime ? appointmentTime.split(":")[1] || "00" : ""}
+              onChange={(event) => {
+                const minute = event.target.value;
+                const hour = appointmentTime ? appointmentTime.split(":")[0] || "00" : "00";
+                setAppointmentTime(minute ? `${hour}:${minute}` : "");
+              }}
+              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2"
+            >
+              <option value="">Chọn phút (00 - 59)</option>
+              {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, "0")).map((minute) => (
+                <option key={minute} value={minute}>
+                  {minute} phút
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
 
         {selectedAvailability && (
           <p className="text-xs text-slate-500">

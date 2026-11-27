@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { RefreshCw, Save, ShieldAlert, UserRound } from "lucide-react";
+import { Save, ShieldAlert, UserRound } from "lucide-react";
 import api from "../../services/api";
 import { useAuth } from "../../contexts/AuthContext";
 
@@ -23,7 +23,6 @@ export default function Profile() {
   const [deactivating, setDeactivating] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -70,7 +69,7 @@ export default function Profile() {
 
     load();
     return () => { cancelled = true; };
-  }, [user?.id, refreshKey]);
+  }, [user?.id]);
 
   const handleSave = async (event) => {
     event.preventDefault();
@@ -145,23 +144,13 @@ export default function Profile() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-5 p-2 md:p-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-800">
-            <UserRound className="text-[#004282]" /> Hồ sơ cá nhân
-          </h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Xem và cập nhật thông tin tài khoản của bạn
-          </p>
-        </div>
-        <button
-          type="button"
-          disabled={loading}
-          onClick={() => setRefreshKey((value) => value + 1)}
-          className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm disabled:opacity-50"
-        >
-          <RefreshCw size={16} /> Làm mới
-        </button>
+      <div>
+        <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-800">
+          <UserRound className="text-[#004282]" /> Hồ sơ cá nhân
+        </h1>
+        <p className="mt-1 text-sm text-slate-500">
+          Xem và cập nhật thông tin tài khoản của bạn
+        </p>
       </div>
 
       {error && (
@@ -182,17 +171,6 @@ export default function Profile() {
       {!loading && (
         <>
           <form onSubmit={handleSave} className="space-y-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <span className="mb-1 block text-xs font-semibold text-slate-500">Mã tài khoản</span>
-                <p className="rounded-lg bg-slate-50 px-3 py-2 text-sm">{profile?.user_id ?? "—"}</p>
-              </div>
-              <div>
-                <span className="mb-1 block text-xs font-semibold text-slate-500">Vai trò</span>
-                <p className="rounded-lg bg-slate-50 px-3 py-2 text-sm">{profile?.role ?? user?.role ?? "—"}</p>
-              </div>
-            </div>
-
             {[
               { name: "username", label: "Tên đăng nhập", type: "text", maxLength: 30 },
               { name: "email", label: "Email", type: "email", maxLength: 100 },

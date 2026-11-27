@@ -159,7 +159,7 @@
 import { useState } from "react";
 import {
   FlaskConical, Search, RefreshCw, Pencil, Trash2,
-  Save, X, RotateCcw
+  Save, X, RotateCcw, Eye
 } from "lucide-react";
 import api from "../../services/api";
 
@@ -217,6 +217,8 @@ export default function DoctorLabs() {
   const [loading, setLoading] = useState(false);
   const [busyId, setBusyId] = useState(null);
   const [editing, setEditing] = useState(null);
+  const [labResultDetail, setLabResultDetail] = useState(null);
+  const [resultLoadingId, setResultLoadingId] = useState(null);
 
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -332,7 +334,33 @@ export default function DoctorLabs() {
     setEditing({
       id: String(lab.lab_request_id),
       test_type: lab.test_type || "",
+      status: lab.status || "REQUESTED",
     });
+  };
+
+  // Xem kết quả xét nghiệm (GET /doctor/lab-results?lab_request_id=...)
+  const viewLabResult = async lab => {
+    const id = String(lab.lab_request_id);
+    setError("");
+    setNotice("");
+    setResultLoadingId(id);
+    try {
+      const res = await api.get("/doctor/lab-results", {
+        params: { lab_request_id: id },
+      });
+      if (!res.data?.success || !res.data?.data) {
+        throw new Error(res.data?.message || "Không lấy được kết quả xét nghiệm.");
+      }
+      setLabResultDetail({
+        is_completed: Boolean(res.data.is_completed),
+        message: res.data.message,
+        ...res.data.data,
+      });
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setResultLoadingId(null);
+    }
   };
 
   // Lưu chỉnh sửa
@@ -366,11 +394,12 @@ export default function DoctorLabs() {
 
     try {
       const res = await api.put(
-        `/doctor/lab-requests/${editing.id}`,
+        "/doctor/lab-requests",
         {
           test_type: editing.test_type.trim(),
-          status: "REQUESTED",
-        }
+          status: editing.status || "REQUESTED",
+        },
+        { params: { lab_request_id: editing.id } }
       );
 
       if (!res.data?.success) {
@@ -413,7 +442,9 @@ export default function DoctorLabs() {
     setNotice("");
 
     try {
-      const res = await api.delete(`/doctor/lab-requests/${id}`);
+      const res = await api.delete("/doctor/lab-requests", {
+        params: { lab_request_id: id },
+      });
 
       if (!res.data?.success) {
         throw new Error(res.data?.message || "Backend không xác nhận xóa.");
@@ -685,7 +716,16 @@ export default function DoctorLabs() {
                   </span>
                 </td>
 
-                <td className="space-x-2 px-4 py-3">
+                <td className="space-x-2 px-4 py-3 whitespace-nowrap">
+                  <button
+                    type="button"
+                    disabled={resultLoadingId === String(lab.lab_request_id)}
+                    onClick={() => viewLabResult(lab)}
+                    className="inline-flex items-center gap-1 rounded border border-emerald-200 px-2 py-1 text-emerald-700 disabled:opacity-40"
+                  >
+                    <Eye size={13} />
+                    {resultLoadingId === String(lab.lab_request_id) ? "Đang tải..." : "Xem KQ"}
+                  </button>
 
                   {lab.status === "REQUESTED" && (
                     <>
@@ -710,13 +750,6 @@ export default function DoctorLabs() {
                       </button>
                     </>
                   )}
-
-                  {lab.status !== "REQUESTED" && (
-                    <span className="text-xs text-slate-400">
-                      Chỉ xem
-                    </span>
-                  )}
-
                 </td>
               </tr>
             ))}
@@ -801,6 +834,50 @@ export default function DoctorLabs() {
 
           </div>
         </form>
+      )}
+
+      {/* Chi tiết kết quả cận lâm sàng (GET /doctor/lab-results) */}
+      {labResultDetail && (
+        <div className="space-y-3 rounded-xl border border-emerald-200 bg-white p-5">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-bold text-slate-900">
+              Kết quả chỉ định #{labResultDetail.lab_request_id} — {labResultDetail.test_type}
+            </h2>
+            <button
+              type="button"
+              onClick={() => setLabResultDetail(null)}
+              className="rounded border p-1 text-slate-500 hover:text-slate-800"
+              aria-label="Đóng kết quả"
+            >
+              <X size={16} />
+            </button>
+          </div>
+          <p className="text-xs text-slate-600">{labResultDetail.message}</p>
+          {labResultDetail.is_completed ? (
+            <div className="space-y-2 text-xs">
+              <div className="grid gap-2 sm:grid-cols-3 text-slate-700">
+                <div><strong>Mã KQ:</strong> #{labResultDetail.result_id}</div>
+                <div><strong>KTV thực hiện:</strong> {labResultDetail.lab_tech_name || `#${labResultDetail.lab_tech_id || "—"}`}</div>
+                <div><strong>Hoàn thành lúc:</strong> {formatDate(labResultDetail.completed_at)}</div>
+              </div>
+              {labResultDetail.attachment_url && (
+                <div>
+                  <strong>File đính kèm: </strong>
+                  <a href={labResultDetail.attachment_url} target="_blank" rel="noreferrer" className="text-blue-700 underline">
+                    {labResultDetail.attachment_url}
+                  </a>
+                </div>
+              )}
+              <pre className="overflow-x-auto rounded-lg bg-slate-50 border p-3 font-mono text-xs text-slate-800">
+                {JSON.stringify(labResultDetail.result_data, null, 2)}
+              </pre>
+            </div>
+          ) : (
+            <p className="text-sm text-amber-700">
+              Trạng thái hiện tại: <strong>{labResultDetail.request_status}</strong> — Chưa có kết quả trả về.
+            </p>
+          )}
+        </div>
       )}
 
     </div>

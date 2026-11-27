@@ -2,11 +2,30 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import { useAuth } from "../../contexts/AuthContext";
-import {
-  MOCK_ICD10_LIST,
-  MOCK_COMMON_MEDICATIONS,
-  MOCK_LAB_TESTS
-} from '../../services/mockData';
+
+const ICD10_CATALOG = [
+  { code: "I10", name: "Bệnh tăng huyết áp vô căn (nguyên phát)" },
+  { code: "I20.0", name: "Cơn đau thắt ngực không ổn định" },
+  { code: "I25.1", name: "Bệnh tim do xơ vữa động mạch" },
+  { code: "E11.9", name: "Đái tháo đường type 2 không có biến chứng" },
+  { code: "E78.0", name: "Tăng cholesterol máu thuần túy" },
+  { code: "K29.7", name: "Viêm dạ dày, không đặc hiệu" },
+  { code: "J00", name: "Viêm mũi họng cấp (Cảm thường)" },
+  { code: "J45.9", name: "Hen phế quản, không xác định" },
+  { code: "M54.5", name: "Đau thắt lưng dưới" },
+  { code: "R42", name: "Chóng mặt và hoa mắt" }
+];
+
+const LAB_TEST_CATALOG = [
+  { id: 1, category: "Xét nghiệm Huyết học", name: "Tổng phân tích tế bào máu ngoại vi (24 thông số)", code: "XN-HH-01" },
+  { id: 2, category: "Xét nghiệm Sinh hóa", name: "Định lượng Glucose máu", code: "XN-SH-01" },
+  { id: 3, category: "Xét nghiệm Sinh hóa", name: "Đo hoạt độ men gan (AST/ALT)", code: "XN-SH-02" },
+  { id: 4, category: "Xét nghiệm Sinh hóa", name: "Bộ mỡ máu toàn phần (Cholesterol, Triglycerid, HDL-C, LDL-C)", code: "XN-SH-03" },
+  { id: 5, category: "Xét nghiệm Sinh hóa", name: "Định lượng Ure, Creatinin máu (Đánh giá chức năng thận)", code: "XN-SH-04" },
+  { id: 6, category: "Chẩn đoán hình ảnh", name: "Điện tâm đồ thông thường (ECG 12 chuyển đạo)", code: "CDHA-ECG" },
+  { id: 7, category: "Chẩn đoán hình ảnh", name: "Siêu âm Doppler Tim qua thành ngực", code: "CDHA-SATM" },
+  { id: 8, category: "Chẩn đoán hình ảnh", name: "Chụp X-quang ngực thẳng kỹ thuật số (CR/DR)", code: "CDHA-XQN" }
+];
 import {
   ArrowLeft,
   Save,
@@ -23,17 +42,101 @@ import {
   Search,
   Clock,
   ShieldCheck,
-  Stethoscope
+  Stethoscope,
+  Eye
 } from 'lucide-react';
+
+// Danh mục thuốc khớp med_id trong database (schema/data mẫu) để kê đơn trực tiếp qua POST /doctor/prescriptions
+const DB_MEDICINES = [
+  { med_id: 1, name: "Paracetamol 500mg", unit: "Viên", unit_price: 800, defaultUsage: "1 viên khi sốt trên 38.5 độ C" },
+  { med_id: 2, name: "Amoxicillin 500mg", unit: "Viên", unit_price: 2500, defaultUsage: "1 viên x 3 lần/ngày sau ăn" },
+  { med_id: 4, name: "Omeprazole 20mg", unit: "Viên", unit_price: 1500, defaultUsage: "1 viên buổi sáng trước ăn 30 phút" },
+  { med_id: 6, name: "Metformin 500mg", unit: "Viên", unit_price: 600, defaultUsage: "1 viên x 2 lần/ngày trong bữa ăn" },
+  { med_id: 13, name: "Amlodipine 5mg", unit: "Viên", unit_price: 500, defaultUsage: "1 viên buổi sáng" },
+  { med_id: 14, name: "Telmisartan 40mg", unit: "Viên", unit_price: 3500, defaultUsage: "1 viên buổi sáng sau ăn" },
+  { med_id: 15, name: "Aspirin 81mg", unit: "Viên", unit_price: 400, defaultUsage: "1 viên/ngày sau ăn trưa" },
+  { med_id: 16, name: "Atorvastatin 20mg", unit: "Viên", unit_price: 2800, defaultUsage: "1 viên buổi tối" },
+  { med_id: 17, name: "Bisoprolol 2.5mg", unit: "Viên", unit_price: 1800, defaultUsage: "1 viên buổi sáng" },
+];
 
 const ExaminationRoom = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  // Chỉ lấy bệnh nhân từ navigation state; không tự chọn hồ sơ mẫu
   const initialPatient = location.state?.patient ?? {};
   const [patient, setPatient] = useState(initialPatient);
+  const [loadingInProgress, setLoadingInProgress] = useState(!location.state?.patient);
+
+  // Tự động tải bệnh nhân đang ở trạng thái IN_PROGRESS khi mở trực tiếp Phòng khám từ menu
+  useEffect(() => {
+    if (location.state?.patient) {
+      setPatient(location.state.patient);
+      setLoadingInProgress(false);
+      return;
+    }
+
+    let cancelled = false;
+    setLoadingInProgress(true);
+    const now = new Date();
+    const today = [
+      now.getFullYear(),
+      String(now.getMonth() + 1).padStart(2, "0"),
+      String(now.getDate()).padStart(2, "0"),
+    ].join("-");
+
+    api.get("/doctor/appointments", { params: { date: today } })
+      .then((res) => {
+        if (cancelled) return;
+        const list = Array.isArray(res.data?.data) ? res.data.data : [];
+        const activeIndex = list.findIndex((item) => item.status === "IN_PROGRESS");
+        if (activeIndex === -1) {
+          setPatient({});
+          return;
+        }
+        const item = list[activeIndex];
+        const dob = item.dob ? new Date(item.dob) : null;
+        let age = null;
+        if (dob && !Number.isNaN(dob.getTime())) {
+          age = now.getFullYear() - dob.getFullYear();
+          if (
+            now.getMonth() < dob.getMonth() ||
+            (now.getMonth() === dob.getMonth() && now.getDate() < dob.getDate())
+          ) {
+            age--;
+          }
+        }
+        setPatient({
+          id: item.patient_id,
+          appointmentId: item.appointment_id,
+          appointmentDate: item.appointment_date
+            ? String(item.appointment_date).slice(0, 10)
+            : today,
+          queueNumber: String(activeIndex + 1).padStart(2, "0"),
+          patientId: String(item.patient_id ?? "—"),
+          fullName: item.full_name || "Chưa có tên",
+          gender:
+            item.gender === "MALE" ? "Nam" :
+            item.gender === "FEMALE" ? "Nữ" : "Khác",
+          age,
+          dob: item.dob ? String(item.dob).slice(0, 10) : null,
+          phone: "—",
+          hasInsurance: Boolean(item.insurance_number),
+          insuranceNumber: item.insurance_number || "",
+          status: "IN_PROGRESS",
+          rawStatus: "IN_PROGRESS",
+          timeSlot: item.appointment_time ?? item.time_slot ?? null,
+        });
+      })
+      .catch(() => {
+        if (!cancelled) setPatient({});
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingInProgress(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [location.state?.patient]);
 
   // Vital signs state
   const [vitals, setVitals] = useState({
@@ -90,25 +193,49 @@ const ExaminationRoom = () => {
   const [isSendingLabs, setIsSendingLabs] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isSavingPrescription, setIsSavingPrescription] = useState(false);
+  const [existingPrescriptions, setExistingPrescriptions] = useState([]);
+  const [selectedLabResult, setSelectedLabResult] = useState(null);
+  const [loadingLabResultId, setLoadingLabResultId] = useState(null);
+  const [recordSearchMode, setRecordSearchMode] = useState("full_name");
+  const [recordSearchValue, setRecordSearchValue] = useState("");
+  const [recordSearchResults, setRecordSearchResults] = useState([]);
+  const [recordSearchLoading, setRecordSearchLoading] = useState(false);
+  const [recordSearchError, setRecordSearchError] = useState("");
   const [saveError, setSaveError] = useState("");
 
   // New medication form inside modal
   const [newMed, setNewMed] = useState({
-    name: "",
-    quantity: 1,
-    unit: "",
-    dosage: "",
-    frequency: "",
+    med_id: 1,
+    name: "Paracetamol 500mg",
+    quantity: 10,
+    unit: "Viên",
+    unit_price: 800,
+    dosage: "1 viên khi sốt trên 38.5 độ C",
+    note: "",
+    frequency: "1 viên khi sốt trên 38.5 độ C",
     duration: ""
   });
 
   const handleAddMedication = () => {
-    if (!newMed.name.trim() || !Number.isInteger(Number(newMed.quantity)) ||
-        Number(newMed.quantity) <= 0 || !newMed.frequency.trim()) {
-      setSaveError("Hãy chọn thuốc, nhập số lượng và hướng dẫn sử dụng hợp lệ.");
+    const qty = Number(newMed.quantity);
+    const medId = Number(newMed.med_id);
+    const price = Number(newMed.unit_price);
+    const dosageText = (newMed.dosage || newMed.frequency || "").trim();
+    if (!Number.isInteger(medId) || medId <= 0 || !Number.isInteger(qty) ||
+        qty <= 0 || !Number.isFinite(price) || price < 0 || !dosageText) {
+      setSaveError("Hãy nhập med_id hợp lệ, số lượng > 0, đơn giá >= 0 và liều dùng.");
       return;
     }
-    setPrescriptions(current => [...current, { ...newMed, id: Date.now() }]);
+    setPrescriptions(current => [...current, {
+      ...newMed,
+      med_id: medId,
+      quantity: qty,
+      unit_price: price,
+      dosage: dosageText,
+      frequency: dosageText,
+      id: Date.now()
+    }]);
     setShowMedModal(false);
     setSaveError("");
   };
@@ -153,8 +280,8 @@ const ExaminationRoom = () => {
       return () => { cancelled = true; };
     }
 
-    api.get(`/doctor/medical-records/patient/${patientIdForLookup}`)
-      .then(res => {
+    api.get("/doctor/medical-records/patient", { params: { patient_id: patientIdForLookup } })
+      .then(async res => {
         if (!res.data?.success || !Array.isArray(res.data?.data)) {
           throw new Error(res.data?.message || "Không thể kiểm tra bệnh án của bệnh nhân.");
         }
@@ -168,11 +295,22 @@ const ExaminationRoom = () => {
           if (!Number.isInteger(id) || id <= 0) {
             throw new Error("Bệnh án đã có nhưng record_id không hợp lệ.");
           }
+          // Gọi thêm GET /doctor/medical-records?record_id=... để đồng bộ chi tiết mới nhất
+          let detail = matching;
+          try {
+            const detailRes = await api.get("/doctor/medical-records", { params: { record_id: id } });
+            if (detailRes.data?.success && detailRes.data?.data) {
+              detail = detailRes.data.data;
+            }
+          } catch {
+            // Dùng dữ liệu từ danh sách nếu không tải được chi tiết
+          }
+          if (cancelled) return;
           setRecordId(id);
-          setSymptoms(prev => prev || matching.symptoms || "");
-          setSelectedIcd(prev => prev || matching.diagnosis_icd10 || "");
+          setSymptoms(prev => prev || detail.symptoms || "");
+          setSelectedIcd(prev => prev || detail.diagnosis_icd10 || "");
           // Backend chỉ lưu một trường notes; giữ nguyên nội dung khi chỉnh sửa.
-          setExamNotes(prev => prev || matching.notes || "");
+          setExamNotes(prev => prev || detail.notes || "");
         }
         setRecordLookupState("ready");
       })
@@ -347,11 +485,11 @@ const handleSaveRecord = async () => {
 
   try {
     const res = recordId
-      ? await api.put(`/doctor/medical-records/${recordId}`, {
+      ? await api.put("/doctor/medical-records", {
           symptoms: medicalRecord.symptoms,
           diagnosis_icd10: medicalRecord.diagnosis_icd10,
           notes: medicalRecord.notes
-        })
+        }, { params: { record_id: recordId } })
       : await api.post("/doctor/medical-records", medicalRecord);
 
     if (!res.data?.success) {
@@ -398,10 +536,13 @@ const handleSaveRecord = async () => {
     setSaveSuccess(false);
     setIsDeleting(true);
     try {
-      const res = await api.delete(`/doctor/medical-records/${id}`);
+      const res = await api.delete("/doctor/medical-records", {
+        params: { record_id: id }
+      });
       if (!res.data?.success) throw new Error(res.data?.message || "Backend không xác nhận xóa bệnh án.");
       setRecordId(null);
       setExistingLabRequests([]);
+      setExistingPrescriptions([]);
       setLabOrders([]);
       setLabListStatus("idle");
       setRecordLookupState("loading");
@@ -418,12 +559,154 @@ const handleSaveRecord = async () => {
     }
   };
 
-  if (!location.state?.patient) {
+  // Tải đơn thuốc đã lưu theo record_id (GET /doctor/prescriptions?record_id=...)
+  useEffect(() => {
+    if (!recordId) {
+      setExistingPrescriptions([]);
+      return;
+    }
+    let cancelled = false;
+    api.get("/doctor/prescriptions", { params: { record_id: recordId } })
+      .then(res => {
+        if (!cancelled && res.data?.success && Array.isArray(res.data?.data)) {
+          setExistingPrescriptions(res.data.data);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setExistingPrescriptions([]);
+      });
+    return () => { cancelled = true; };
+  }, [recordId]);
+
+  const handleSavePrescription = async () => {
+    setSaveError("");
+    setSaveSuccess(false);
+    const doctorId = Number(user?.staff_id ?? user?.staffId);
+    if (!recordId) {
+      setSaveError("Cần lưu bệnh án để có record_id trước khi gửi đơn thuốc.");
+      return;
+    }
+    if (!Number.isInteger(doctorId) || doctorId <= 0) {
+      setSaveError("Thiếu staff_id của bác sĩ.");
+      return;
+    }
+    if (prescriptions.length === 0) {
+      setSaveError("Chưa có thuốc nào trong đơn nháp.");
+      return;
+    }
+    setIsSavingPrescription(true);
+    try {
+      const medication_details = prescriptions.map(med => ({
+        med_id: Number(med.med_id),
+        quantity: Number(med.quantity),
+        unit_price: Number(med.unit_price),
+        dosage: String(med.dosage || med.frequency || "").trim(),
+        note: String(med.note || "").trim() || null,
+      }));
+      const res = await api.post("/doctor/prescriptions", {
+        record_id: recordId,
+        doctor_id: doctorId,
+        medication_details,
+      });
+      if (!res.data?.success) {
+        throw new Error(res.data?.message || "Không thể lưu đơn thuốc.");
+      }
+      setPrescriptions([]);
+      setToastMessage(`Đã kê đơn thuốc #${res.data.prescription_id} thành công!`);
+      setSaveSuccess(true);
+      const reloadRes = await api.get("/doctor/prescriptions", { params: { record_id: recordId } }).catch(() => null);
+      if (reloadRes?.data?.success && Array.isArray(reloadRes.data.data)) {
+        setExistingPrescriptions(reloadRes.data.data);
+      }
+    } catch (err) {
+      setSaveError(err.response?.data?.message || err.message || "Không thể lưu đơn thuốc.");
+    } finally {
+      setIsSavingPrescription(false);
+    }
+  };
+
+  const handleViewLabResult = async (labRequestId) => {
+    setSaveError("");
+    setLoadingLabResultId(labRequestId);
+    try {
+      const res = await api.get("/doctor/lab-results", {
+        params: { lab_request_id: labRequestId },
+      });
+      if (!res.data?.success || !res.data?.data) {
+        throw new Error(res.data?.message || "Không lấy được kết quả xét nghiệm.");
+      }
+      setSelectedLabResult({
+        is_completed: Boolean(res.data.is_completed),
+        message: res.data.message,
+        ...res.data.data,
+      });
+    } catch (err) {
+      setSaveError(err.response?.data?.message || err.message || "Không thể xem kết quả xét nghiệm.");
+    } finally {
+      setLoadingLabResultId(null);
+    }
+  };
+
+  const handleCompleteAppointment = async () => {
+    const appointmentId = Number(patient?.appointmentId);
+    if (!Number.isInteger(appointmentId) || appointmentId <= 0) return;
+    setSaveError("");
+    try {
+      const res = await api.put("/doctor/appointment/status", {
+        appointment_id: appointmentId,
+        status: "COMPLETED",
+      });
+      if (!res.data?.success) throw new Error(res.data?.message || "Không thể hoàn tất lịch hẹn.");
+      setToastMessage("Đã hoàn tất lịch hẹn (COMPLETED)!");
+      setSaveSuccess(true);
+    } catch (err) {
+      setSaveError(err.response?.data?.message || err.message || "Không thể cập nhật trạng thái lịch hẹn.");
+    }
+  };
+
+  const handleSearchMedicalRecords = async (e) => {
+    e.preventDefault();
+    const val = recordSearchValue.trim();
+    setRecordSearchError("");
+    setRecordSearchResults([]);
+    if (!val) {
+      setRecordSearchError("Vui lòng nhập giá trị cần tra cứu.");
+      return;
+    }
+    setRecordSearchLoading(true);
+    try {
+      let res;
+      if (recordSearchMode === "record_id") {
+        res = await api.get("/doctor/medical-records", { params: { record_id: val } });
+        setRecordSearchResults(res.data?.data ? [res.data.data] : []);
+      } else if (recordSearchMode === "patient_id") {
+        res = await api.get("/doctor/medical-records/patient", { params: { patient_id: val } });
+        setRecordSearchResults(Array.isArray(res.data?.data) ? res.data.data : []);
+      } else {
+        res = await api.get("/doctor/medical-records/patient/name", { params: { full_name: val } });
+        setRecordSearchResults(Array.isArray(res.data?.data) ? res.data.data : []);
+      }
+    } catch (err) {
+      setRecordSearchError(err.response?.data?.message || err.message || "Không tìm thấy bệnh án.");
+    } finally {
+      setRecordSearchLoading(false);
+    }
+  };
+
+  if (loadingInProgress) {
+    return (
+      <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600">
+        Đang kiểm tra bệnh nhân đang khám trong phòng...
+      </div>
+    );
+  }
+
+  if (!patient?.id || !patient?.appointmentId) {
     return (
       <div className="rounded-xl border border-amber-200 bg-amber-50 p-6">
-        <h2 className="font-bold text-amber-900">Chưa chọn bệnh nhân</h2>
+        <h2 className="font-bold text-amber-900">Không có bệnh nhân nào trong phòng khám</h2>
         <p className="mt-2 text-sm text-amber-800">
-          Vui lòng chọn một lịch hẹn hợp lệ từ hàng đợi khám bệnh.
+          Hiện chưa có bệnh nhân nào đang khám (IN_PROGRESS). Vui lòng chọn một lịch hẹn từ hàng đợi khám bệnh.
         </p>
         <button
           type="button"
@@ -515,7 +798,7 @@ const handleSaveRecord = async () => {
             </button>
           )}
 
-      {/* Nút hoàn tất khám & lưu đơn thuốc */}
+      {/* Nút hoàn tất khám & lưu bệnh án */}
       <button
         onClick={handleSaveRecord}
         disabled={isSaving || isDeleting || isSendingLabs || recordLookupState !== "ready"}
@@ -523,6 +806,15 @@ const handleSaveRecord = async () => {
       >
         <Save className="w-4 h-4" />
         {isSaving ? "Đang lưu..." : "Lưu bệnh án"}
+      </button>
+      <button
+        type="button"
+        onClick={handleCompleteAppointment}
+        disabled={isSaving || isDeleting || isSendingLabs}
+        className="flex items-center gap-1.5 px-4 py-2 bg-[#004282] hover:bg-[#002f5e] text-white rounded-xl text-xs font-bold disabled:opacity-50"
+      >
+        <CheckCircle2 className="w-4 h-4" />
+        Hoàn tất lịch hẹn
       </button>
       {recordId && recordLookupState === "ready" && (
         <button
@@ -754,7 +1046,7 @@ const handleSaveRecord = async () => {
                     className="p-1.5 text-xs font-bold bg-white border border-blue-300 rounded-lg text-[#004282] focus:outline-none"
                   >
                     <option value="" disabled>Chọn mã ICD-10</option>
-                    {MOCK_ICD10_LIST.map(icd => (
+                    {ICD10_CATALOG.map(icd => (
                       <option key={icd.code} value={icd.code}>
                         [{icd.code}] - {icd.name}
                       </option>
@@ -868,36 +1160,77 @@ const handleSaveRecord = async () => {
             ) : (
               <ul className="mt-3 space-y-2">
                 {existingLabRequests.map(req => (
-                  <li key={req.lab_request_id} className="rounded-lg border border-slate-100 p-2 text-xs">
-                    <span className="font-medium">{req.test_type}</span>
-                    <span className="ml-2 text-slate-500">{req.status || "Chưa rõ trạng thái"}</span>
+                  <li key={req.lab_request_id} className="rounded-lg border border-slate-100 p-2 text-xs flex items-center justify-between gap-2">
+                    <div>
+                      <span className="font-medium">{req.test_type}</span>
+                      <span className="ml-2 text-slate-500">{req.status || "Chưa rõ trạng thái"}</span>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={loadingLabResultId === req.lab_request_id}
+                      onClick={() => handleViewLabResult(req.lab_request_id)}
+                      className="inline-flex items-center gap-1 rounded border border-emerald-200 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"
+                    >
+                      <Eye size={12} />
+                      {loadingLabResultId === req.lab_request_id ? "..." : "Xem KQ"}
+                    </button>
                   </li>
                 ))}
               </ul>
             )}
+            {selectedLabResult && (
+              <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50/40 p-3 text-xs space-y-1.5">
+                <div className="flex items-center justify-between font-bold text-slate-800">
+                  <span>KQ CLS #{selectedLabResult.lab_request_id}: {selectedLabResult.test_type}</span>
+                  <button type="button" onClick={() => setSelectedLabResult(null)} className="text-slate-500 hover:text-slate-800">✕</button>
+                </div>
+                <p className="text-slate-600">{selectedLabResult.message}</p>
+                {selectedLabResult.is_completed && (
+                  <pre className="overflow-x-auto rounded bg-white p-2 border text-[11px] font-mono">
+                    {JSON.stringify(selectedLabResult.result_data, null, 2)}
+                  </pre>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Đơn thuốc điện tử */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
-            <div className="flex items-center justify-between mb-3 border-b pb-2">
+          <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm space-y-3">
+            <div className="flex items-center justify-between border-b pb-2">
               <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wide flex items-center gap-2">
                 <Pill className="w-4 h-4 text-emerald-600" />
-                Đơn Thuốc Nháp ({prescriptions.length})
+                Đơn Thuốc ({prescriptions.length} nháp)
               </h4>
-              <button
-                onClick={() => setShowMedModal(true)}
-                className="text-xs text-emerald-700 hover:text-emerald-800 font-bold flex items-center gap-1 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 transition"
-              >
-                <Plus className="w-3.5 h-3.5" /> Thêm thuốc
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowMedModal(true)}
+                  className="text-xs text-emerald-700 hover:text-emerald-800 font-bold flex items-center gap-1 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 transition"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Thêm thuốc
+                </button>
+                {prescriptions.length > 0 && (
+                  <button
+                    type="button"
+                    disabled={isSavingPrescription || !recordId}
+                    onClick={handleSavePrescription}
+                    className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center gap-1 px-2.5 py-1 rounded-lg disabled:opacity-50"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    {isSavingPrescription ? "Đang gửi..." : "Lưu đơn"}
+                  </button>
+                )}
+              </div>
             </div>
 
-            <p className="mb-2 text-xs text-amber-700">
-              Thuốc được chọn ở đây chỉ là bản nháp trên frontend, chưa lưu vào database.
-            </p>
+            {!recordId && (
+              <p className="text-xs text-amber-700">
+                Cần lưu bệnh án để có mã bệnh án trước khi gửi đơn thuốc (POST /doctor/prescriptions).
+              </p>
+            )}
             {prescriptions.length === 0 ? (
-              <div className="text-xs text-slate-400 py-6 text-center italic">
-                Chưa có thuốc nào trong đơn.
+              <div className="text-xs text-slate-400 py-4 text-center italic">
+                Chưa có thuốc nào trong đơn nháp.
               </div>
             ) : (
               <div className="space-y-3">
@@ -905,8 +1238,8 @@ const handleSaveRecord = async () => {
                   <div key={med.id} className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs">
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <span className="font-bold text-slate-900">{index + 1}. {med.name}</span>
-                        <span className="ml-2 text-slate-500">Số lượng: <strong>{med.quantity} {med.unit}</strong></span>
+                        <span className="font-bold text-slate-900">{index + 1}. {med.name} (ID: {med.med_id})</span>
+                        <span className="ml-2 text-slate-500">SL: <strong>{med.quantity} {med.unit}</strong> • {Number(med.unit_price).toLocaleString("vi-VN")}đ</span>
                       </div>
                       <button
                         onClick={() => handleRemoveMedication(med.id)}
@@ -917,8 +1250,24 @@ const handleSaveRecord = async () => {
                       </button>
                     </div>
                     <div className="text-slate-600 mt-1 italic text-[11px] bg-white p-1.5 rounded border border-slate-100">
-                      Cách dùng: {med.frequency} ({med.duration})
+                      Liều dùng: {med.dosage || med.frequency} {med.note ? `(${med.note})` : ""}
                     </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {existingPrescriptions.length > 0 && (
+              <div className="border-t pt-3 space-y-2">
+                <p className="text-xs font-bold text-slate-700">Đơn thuốc đã lưu trên hệ thống ({existingPrescriptions.length}):</p>
+                {existingPrescriptions.map((p) => (
+                  <div key={p.prescription_id} className="rounded-lg border border-emerald-200 bg-emerald-50/40 p-2.5 text-xs space-y-1">
+                    <div className="font-semibold text-emerald-900">Đơn #{p.prescription_id}</div>
+                    {(p.details || []).map((d, idx) => (
+                      <div key={d.detail_id ?? idx} className="text-slate-700">
+                        • {d.med_name || `Thuốc #${d.med_id}`} × {d.quantity} — {d.dosage}
+                      </div>
+                    ))}
                   </div>
                 ))}
               </div>
@@ -940,55 +1289,82 @@ const handleSaveRecord = async () => {
 
             <div className="p-5 space-y-4">
               <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">Chọn thuốc từ danh sách tham khảo (chưa đồng bộ kho):</label>
+                <label className="text-xs font-bold text-slate-700 block mb-1">Chọn thuốc theo danh mục DB:</label>
                 <select
-                  value={newMed.name}
+                  value={newMed.med_id}
                   onChange={(e) => {
-                    const found = MOCK_COMMON_MEDICATIONS.find(m => m.name === e.target.value);
-                    setNewMed({
-                      ...newMed,
-                      name: e.target.value,
-                      unit: found ? found.unit : 'Viên',
-                      frequency: found ? found.defaultUsage : newMed.frequency
-                    });
+                    const found = DB_MEDICINES.find(m => m.med_id === Number(e.target.value));
+                    if (found) {
+                      setNewMed({
+                        ...newMed,
+                        med_id: found.med_id,
+                        name: found.name,
+                        unit: found.unit,
+                        unit_price: found.unit_price,
+                        dosage: found.defaultUsage,
+                        frequency: found.defaultUsage
+                      });
+                    }
                   }}
                   className="w-full p-2.5 text-sm bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:border-[#004282]"
-                  >
-                    <option value="">Chọn thuốc tham khảo (chưa xác thực)</option>
-                    {MOCK_COMMON_MEDICATIONS.map(m => (
-                      <option key={m.id} value={m.name}>{m.name}</option>
-                    ))}
-                  </select>
+                >
+                  {DB_MEDICINES.map(m => (
+                    <option key={m.med_id} value={m.med_id}>[ID #{m.med_id}] {m.name} ({m.unit_price.toLocaleString("vi-VN")}đ/{m.unit})</option>
+                  ))}
+                </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">Mã thuốc (med_id):</label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={newMed.med_id}
+                    onChange={(e) => setNewMed({ ...newMed, med_id: Number(e.target.value) })}
+                    className="w-full p-2.5 text-sm bg-slate-50 border border-slate-300 rounded-xl"
+                  />
+                </div>
                 <div>
                   <label className="text-xs font-bold text-slate-700 block mb-1">Số lượng:</label>
                   <input
                     type="number"
+                    min={1}
                     value={newMed.quantity}
                     onChange={(e) => setNewMed({ ...newMed, quantity: Number(e.target.value) })}
                     className="w-full p-2.5 text-sm bg-slate-50 border border-slate-300 rounded-xl"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">Đơn vị tính:</label>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">Đơn giá (đ):</label>
                   <input
-                    type="text"
-                    value={newMed.unit}
-                    onChange={(e) => setNewMed({ ...newMed, unit: e.target.value })}
+                    type="number"
+                    min={0}
+                    value={newMed.unit_price}
+                    onChange={(e) => setNewMed({ ...newMed, unit_price: Number(e.target.value) })}
                     className="w-full p-2.5 text-sm bg-slate-50 border border-slate-300 rounded-xl"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">Hướng dẫn sử dụng:</label>
-                <textarea
-                  rows={2}
-                  value={newMed.frequency}
-                  onChange={(e) => setNewMed({ ...newMed, frequency: e.target.value })}
-                  placeholder="Ví dụ: Uống 1 viên vào 08h sáng sau bữa ăn..."
+                <label className="text-xs font-bold text-slate-700 block mb-1">Liều dùng (dosage):</label>
+                <input
+                  type="text"
+                  value={newMed.dosage}
+                  onChange={(e) => setNewMed({ ...newMed, dosage: e.target.value, frequency: e.target.value })}
+                  placeholder="Ví dụ: Sáng 1 viên, Tối 1 viên..."
+                  className="w-full p-2.5 text-sm bg-slate-50 border border-slate-300 rounded-xl"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">Ghi chú (note):</label>
+                <input
+                  type="text"
+                  value={newMed.note}
+                  onChange={(e) => setNewMed({ ...newMed, note: e.target.value })}
+                  placeholder="Ví dụ: Uống sau khi ăn..."
                   className="w-full p-2.5 text-sm bg-slate-50 border border-slate-300 rounded-xl"
                 />
               </div>
@@ -1028,7 +1404,7 @@ const handleSaveRecord = async () => {
                 Danh mục gợi ý ở frontend; chưa đồng bộ giá/danh mục xét nghiệm từ backend. Việc tích chọn chỉ tạo bản nháp.
               </p>
 
-              {MOCK_LAB_TESTS.map(test => {
+              {LAB_TEST_CATALOG.map(test => {
                 const isSelected = labOrders.some(l => l.id === test.id);
                 return (
                   <div

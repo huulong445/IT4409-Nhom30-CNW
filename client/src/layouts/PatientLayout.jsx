@@ -1,4 +1,4 @@
-import { Outlet, Link } from "react-router-dom";
+import { Outlet, Link, useNavigate } from "react-router-dom";
 import {
   HeartPulse,
   Phone,
@@ -10,13 +10,16 @@ import {
 import { useAuth } from "../contexts/AuthContext";
 
 export default function PatientLayout() {
-  const { user, logout, isDemo, authChecking } = useAuth();
+  const { user, logout, authChecking } = useAuth();
+  const navigate = useNavigate();
 
   const handleLogout = async () => {
     const result = await logout();
     if (!result.success) {
       window.alert(result.message);
+      return;
     }
+    navigate("/login?role=patient", { replace: true });
   };
 
   return (
@@ -114,7 +117,6 @@ export default function PatientLayout() {
         </div>
       </header>
 
-      {isDemo && <div role="status" className="bg-amber-100 px-4 py-2 text-center text-sm font-semibold text-amber-900">CHẾ ĐỘ DEMO — Không có dữ liệu hay lịch hẹn đã lưu trên backend.</div>}
       <main className="flex-1 w-full">
         <Outlet />
       </main>

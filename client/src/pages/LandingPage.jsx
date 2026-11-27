@@ -8,7 +8,6 @@ import {
   Heart, Check, LogOut, LogIn, UserPlus
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { MOCK_USERS_LIST, MOCK_DEPARTMENTS } from '../services/mockData';
 
 export default function LandingPage() {
   const { user, logout } = useAuth();
@@ -22,22 +21,6 @@ export default function LandingPage() {
 
   // FAQ accordion state
   const [openFaq, setOpenFaq] = useState(0);
-
-  // Specialties filter state for Doctors section
-  const [activeSpecialty, setActiveSpecialty] = useState('ALL');
-
-  // Filter clinical doctors
-  const doctors = MOCK_USERS_LIST.filter(u => u.role === 'DOCTOR' || u.role === 'PARACLINICAL');
-
-  const filteredDoctors = activeSpecialty === 'ALL'
-    ? doctors.slice(0, 6)
-    : doctors.filter(d => {
-        if (activeSpecialty === 'TIM_MACH') return d.departmentName.toLowerCase().includes('tim');
-        if (activeSpecialty === 'TIEU_HOA') return d.departmentName.toLowerCase().includes('tiêu');
-        if (activeSpecialty === 'XUONG_KHOP') return d.departmentName.toLowerCase().includes('khớp');
-        if (activeSpecialty === 'CAN_LAM_SANG') return d.role === 'PARACLINICAL';
-        return true;
-      });
 
   const faqs = [
     {
@@ -568,94 +551,6 @@ export default function LandingPage() {
               <span className="text-slate-500 font-medium">Trực 24/7: 024 3869 2026</span>
               <span className="text-red-600 font-bold group-hover:translate-x-1 transition-transform">Sảnh Cấp cứu A2 &rarr;</span>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* =========================================================================
-          8. ĐỘI NGŨ Y BÁC SĨ CHUYÊN GIA (DOCTORS)
-      ========================================================================= */}
-      <section id="doctors" className="py-16 bg-slate-100/70 border-t border-slate-200">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
-            <div>
-              <span className="text-[#005baa] font-bold text-xs uppercase tracking-wider">
-                Đội ngũ thầy thuốc
-              </span>
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1">
-                Các Bác Sĩ & Chuyên Gia Đầu Ngành
-              </h2>
-              <p className="text-slate-500 text-sm mt-1">
-                Tận tâm, y đức và giàu kinh nghiệm điều trị thực tiễn
-              </p>
-            </div>
-
-            {/* Filter buttons */}
-            <div className="flex flex-wrap gap-2">
-              {[
-                { id: 'ALL', label: 'Tất cả' },
-                { id: 'TIM_MACH', label: 'Tim Mạch' },
-                { id: 'TIEU_HOA', label: 'Tiêu Hóa' },
-                { id: 'XUONG_KHOP', label: 'Xương Khớp' },
-                { id: 'CAN_LAM_SANG', label: 'Cận Lâm Sàng' }
-              ].map(f => (
-                <button
-                  key={f.id}
-                  onClick={() => setActiveSpecialty(f.id)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-                    activeSpecialty === f.id
-                      ? 'bg-[#004282] text-white shadow-sm'
-                      : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-                  }`}
-                >
-                  {f.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredDoctors.map((doc) => (
-              <div
-                key={doc.id}
-                className="bg-white rounded-2xl overflow-hidden border border-slate-200 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 flex flex-col"
-              >
-                <div className="p-6 flex items-start gap-4 flex-1">
-                  <img
-                    src={doc.avatar}
-                    alt={doc.fullName}
-                    className="w-20 h-20 rounded-2xl object-cover border-2 border-blue-100 shadow-md shrink-0"
-                  />
-                  <div>
-                    <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-blue-50 text-blue-700 mb-1">
-                      {doc.role === 'DOCTOR' ? 'Bác sĩ lâm sàng' : 'Bác sĩ cận lâm sàng'}
-                    </span>
-                    <h3 className="font-bold text-base text-slate-900 line-clamp-1">
-                      {doc.fullName}
-                    </h3>
-                    <p className="text-xs text-blue-600 font-medium mt-0.5">
-                      {doc.specialty}
-                    </p>
-                    <p className="text-xs text-slate-500 mt-1 line-clamp-1">
-                      {doc.departmentName}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="bg-slate-50 px-6 py-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
-                  <span className="flex items-center gap-1 text-slate-500">
-                    <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                    {doc.room}
-                  </span>
-                  <Link
-                    to={user ? "/patient/booking" : "/login?role=patient&redirect=/patient/booking"}
-                    className="text-[#004282] font-bold hover:underline flex items-center gap-1"
-                  >
-                    Đặt lịch khám &rarr;
-                  </Link>
-                </div>
-              </div>
-            ))}
           </div>
         </div>
       </section>

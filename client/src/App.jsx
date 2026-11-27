@@ -22,6 +22,10 @@ import DoctorSchedule from './pages/doctor/DoctorSchedule';
 import ParaclinicalDashboard from './pages/paraclinical/ParaclinicalDashboard';
 import ParaclinicalSchedule from './pages/paraclinical/ParaclinicalSchedule';
 
+// Receptionist pages
+import ReceptionistDashboard from './pages/receptionist/ReceptionistDashboard';
+import ReceptionistSchedule from './pages/receptionist/ReceptionistSchedule';
+
 // Admin pages
 import AdminDashboard from './pages/admin/AdminDashboard';
 import UserManagement from './pages/admin/UserManagement';
@@ -29,6 +33,8 @@ import DepartmentManagement from './pages/admin/DepartmentManagement';
 import AdminReports from './pages/admin/AdminReports';
 import StaffManagement from './pages/admin/StaffManagement';
 import PatientManagement from './pages/admin/PatientManagement';
+import ScheduleManagement from './pages/admin/ScheduleManagement';
+import MedicineManagement from './pages/admin/MedicineManagement';
 
 
 import NotFound from './pages/NotFound';
@@ -64,6 +70,13 @@ function App() {
             <Route path="profile" element={<Profile />} />
           </Route>
 
+          {/* Giao diện Tiếp tân (Receptionist Portal) */}
+          <Route path="/receptionist" element={<DashboardLayout />}>
+            <Route index element={<ReceptionistDashboard />} />
+            <Route path="schedule" element={<ReceptionistSchedule />} />
+            <Route path="profile" element={<Profile />} />
+          </Route>
+
           {/* Giao diện Quản trị viên (Admin Portal) */}
           <Route path="/admin" element={<DashboardLayout />}>
             <Route index element={<AdminDashboard />} />
@@ -71,6 +84,8 @@ function App() {
             <Route path="staff" element={<StaffManagement />} />
             <Route path="patients" element={<PatientManagement />} />
             <Route path="departments" element={<DepartmentManagement />} />
+            <Route path="schedules" element={<ScheduleManagement />} />
+            <Route path="medicines" element={<MedicineManagement />} />
             <Route path="reports" element={<AdminReports />} />
             <Route path="profile" element={<Profile />} />
           </Route>

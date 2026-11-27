@@ -12,14 +12,25 @@ import {
   FlaskConical
 } from 'lucide-react';
 
+const localDateStr = (d = new Date()) =>
+  [
+    d.getFullYear(),
+    String(d.getMonth() + 1).padStart(2, "0"),
+    String(d.getDate()).padStart(2, "0"),
+  ].join("-");
+
 const DoctorQueue = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [selectedDate, setSelectedDate] = useState(localDateStr);
   const [queue, setQueue] = useState([]);
   const [queueLoading, setQueueLoading] = useState(true);
   const [queueError, setQueueError] = useState("");
+  const [statusNotice, setStatusNotice] = useState("");
+  const [updatingStatusId, setUpdatingStatusId] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('ALL'); // 'ALL', 'WAITING', 'LAB_READY', 'WAITING_LAB', 'COMPLETED'
+  const [statusFilter, setStatusFilter] = useState('ALL'); // 'ALL', 'WAITING', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'
 
   // GỌI API THẬT SANG BACKEND: Lấy danh sách hàng đợi khám của Bác sĩ
 
@@ -32,16 +43,9 @@ const DoctorQueue = () => {
       setQueueError("");
       setQueue([]);
 
-      const now = new Date();
-      const date = [
-        now.getFullYear(),
-        String(now.getMonth() + 1).padStart(2, "0"),
-        String(now.getDate()).padStart(2, "0"),
-      ].join("-");
-
       try {
         const res = await api.get("/doctor/appointments", {
-          params: { date },
+          params: { date: selectedDate },
         });
 
         if (!res.data?.success || !Array.isArray(res.data?.data)) {
@@ -69,6 +73,9 @@ const DoctorQueue = () => {
           return {
             id: item.patient_id,
             appointmentId: item.appointment_id,
+            appointmentDate: item.appointment_date
+              ? String(item.appointment_date).slice(0, 10)
+              : selectedDate,
             queueNumber: String(idx + 1).padStart(2, "0"),
             patientId: String(item.patient_id ?? "—"),
             fullName: item.full_name || "Chưa có tên",
@@ -76,9 +83,11 @@ const DoctorQueue = () => {
               item.gender === "MALE" ? "Nam" :
               item.gender === "FEMALE" ? "Nữ" : "Khác",
             age,
-            dob: item.dob || null,
+            dob: item.dob ? String(item.dob).slice(0, 10) : null,
             phone: "—",
             hasInsurance: Boolean(item.insurance_number),
+            insuranceNumber: item.insurance_number || "",
+            rawStatus: item.status || "PENDING",
             status:
               item.status === "PENDING" ? "WAITING" : item.status,
             reason: "Chưa có thông tin lý do khám",
@@ -111,7 +120,7 @@ const DoctorQueue = () => {
     return () => {
       cancelled = true;
     };
-  }, [user?.user_id, user?.role]);
+  }, [user?.user_id, user?.role, selectedDate, refreshKey]);
 
   // Thống kê số lượng theo quy trình khám
   const stats = {
@@ -121,29 +130,76 @@ const DoctorQueue = () => {
     labReady: queue.filter(q => q.status === 'LAB_READY').length,
     waitingLab: queue.filter(q => q.status === 'WAITING_LAB').length,
     completed: queue.filter(q => q.status === 'COMPLETED').length,
+    cancelled: queue.filter(q => q.status === 'CANCELLED').length,
   };
 
-  const handleStartExam = (patient, isConclusion = false) => {
+  const handleUpdateStatus = async (appointmentId, newStatus) => {
+    setQueueError("");
+    setStatusNotice("");
+    setUpdatingStatusId(appointmentId);
+    try {
+      const res = await api.put("/doctor/appointment/status", {
+        appointment_id: appointmentId,
+        status: newStatus,
+      });
+      if (!res.data?.success) {
+        throw new Error(res.data?.message || "Không thể cập nhật trạng thái lịch hẹn.");
+      }
+      setQueue((prev) =>
+        prev.map((item) =>
+          item.appointmentId === appointmentId
+            ? {
+                ...item,
+                rawStatus: newStatus,
+                status: newStatus === "PENDING" ? "WAITING" : newStatus,
+              }
+            : item
+        )
+      );
+      setStatusNotice(`Đã cập nhật lịch hẹn #${appointmentId} sang trạng thái ${newStatus}.`);
+    } catch (err) {
+      setQueueError(
+        err.response?.data?.message ||
+          err.message ||
+          "Không thể cập nhật trạng thái lịch hẹn."
+      );
+    } finally {
+      setUpdatingStatusId(null);
+    }
+  };
+
+  const handleStartExam = async (patient, isConclusion = false) => {
     if (!patient?.appointmentId || !patient?.id) {
       window.alert("Thiếu ID lịch hẹn hoặc bệnh nhân.");
       return;
+    }
+
+    if (patient.rawStatus === "PENDING") {
+      try {
+        await api.put("/doctor/appointment/status", {
+          appointment_id: patient.appointmentId,
+          status: "IN_PROGRESS",
+        });
+      } catch {
+        // Cho phép mở phòng khám ngay cả khi không đổi trạng thái tự động được
+      }
     }
 
     navigate("/doctor/exam", {
       state: {
         patient: {
           ...patient,
+          status: patient.rawStatus === "PENDING" ? "IN_PROGRESS" : patient.status,
           isConclusion,
         },
       },
     });
   };
 
-  // Đánh dấu vắng mặt (No-show) hoặc phục hồi lượt khám
-  const handleToggleNoShow = () => {
-    window.alert(
-      "Backend hiện chưa có API đánh dấu bệnh nhân vắng mặt."
-    );
+  // Hủy / khôi phục lịch hẹn bằng PUT /doctor/appointment/status
+  const handleToggleNoShow = (patient) => {
+    const nextStatus = patient.rawStatus === "CANCELLED" ? "PENDING" : "CANCELLED";
+    handleUpdateStatus(patient.appointmentId, nextStatus);
   };
 
   // Bộ lọc dữ liệu tìm kiếm và trạng thái
@@ -205,9 +261,10 @@ const DoctorQueue = () => {
           </span>
         );
       case 'NO_SHOW':
+      case 'CANCELLED':
         return (
           <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-red-50 text-red-700 border border-red-200">
-            Vắng mặt
+            {status === 'CANCELLED' ? 'Đã hủy' : 'Vắng mặt'}
           </span>
         );
       case 'COMPLETED':
@@ -232,6 +289,14 @@ const DoctorQueue = () => {
           {queueError}
         </div>
       )}
+      {statusNotice && !queueError && (
+        <div
+          role="status"
+          className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800"
+        >
+          {statusNotice}
+        </div>
+      )}
       {/* Tiêu đề trang */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
@@ -239,12 +304,27 @@ const DoctorQueue = () => {
             Hàng Đợi Khám Bệnh
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Bác sĩ: {user?.fullName || user?.username || "Chưa có thông tin"} • Ngày: {new Date().toLocaleDateString("vi-VN")}
+            Bác sĩ: {user?.fullName || user?.username || "Chưa có thông tin"} • Ngày: {selectedDate}
           </p>
         </div>
-        <div className="text-xs text-slate-500 bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm flex items-center gap-2">
-          <Clock className="w-3.5 h-3.5 text-blue-600" />
-          <span>Thời gian tiếp nhận: <strong>Chưa có cấu hình</strong></span>
+        <div className="flex items-center gap-2">
+          <label className="text-xs text-slate-600 bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm flex items-center gap-2">
+            <Clock className="w-3.5 h-3.5 text-blue-600" />
+            <span>Ngày khám:</span>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="font-semibold text-slate-800 outline-none"
+            />
+          </label>
+          <button
+            type="button"
+            onClick={() => setRefreshKey((k) => k + 1)}
+            className="text-xs bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm hover:bg-slate-50 font-semibold text-[#004282]"
+          >
+            Tải lại
+          </button>
         </div>
       </div>
 
@@ -512,18 +592,33 @@ const DoctorQueue = () => {
                       {/* Cột 7: Thao tác */}
                       <td className="py-3 px-3.5 text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-1.5">
-                          {/* Nút đánh dấu vắng mặt */}
+                          {/* Đổi trạng thái lịch hẹn (PUT /doctor/appointment/status) */}
+                          <select
+                            aria-label={`Trạng thái lịch hẹn ${item.appointmentId}`}
+                            value={item.rawStatus}
+                            disabled={updatingStatusId === item.appointmentId}
+                            onChange={(e) => handleUpdateStatus(item.appointmentId, e.target.value)}
+                            className="px-2 py-1 rounded border border-slate-200 bg-white text-[11px] font-medium text-slate-700 disabled:opacity-50"
+                          >
+                            <option value="PENDING">PENDING</option>
+                            <option value="IN_PROGRESS">IN_PROGRESS</option>
+                            <option value="COMPLETED">COMPLETED</option>
+                            <option value="CANCELLED">CANCELLED</option>
+                          </select>
+
+                          {/* Nút hủy / khôi phục */}
                           {item.status !== 'COMPLETED' && (
                             <button
-                              onClick={() => handleToggleNoShow(item.appointmentId)}
-                              className={`px-2 py-1 rounded text-xs transition ${
-                                item.status === 'NO_SHOW'
+                              onClick={() => handleToggleNoShow(item)}
+                              disabled={updatingStatusId === item.appointmentId}
+                              className={`px-2 py-1 rounded text-xs transition disabled:opacity-50 ${
+                                item.rawStatus === 'CANCELLED'
                                   ? 'text-slate-700 bg-slate-100 border border-slate-300 hover:bg-slate-200'
                                   : 'text-slate-500 border border-slate-200 hover:text-red-600 hover:border-red-200'
                               }`}
-                              title={item.status === 'NO_SHOW' ? 'Phục hồi lượt khám' : 'Báo vắng mặt'}
+                              title={item.rawStatus === 'CANCELLED' ? 'Phục hồi lượt khám' : 'Hủy lượt khám'}
                             >
-                              {item.status === 'NO_SHOW' ? 'Phục hồi' : 'Vắng'}
+                              {item.rawStatus === 'CANCELLED' ? 'Phục hồi' : 'Hủy'}
                             </button>
                           )}
 

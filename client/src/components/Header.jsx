@@ -14,23 +14,8 @@ import {
 } from "lucide-react";
 
 const Header = () => {
-  const { user, switchRole, logout } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
-
-  const handleRoleChange = (role) => {
-    if (!switchRole(role)) {
-      window.alert("Bạn không có quyền truy cập trang này.");
-      return;
-    }
-
-    if (role === "ADMIN") {
-      navigate("/admin");
-    } else if ((role === "PARACLINICAL" || role === "LAB_TECH")) {
-      navigate("/paraclinical");
-    } else {
-      navigate("/doctor");
-    }
-  };
 
   const handleLogout = async () => {
     const result = await logout();
@@ -64,46 +49,6 @@ const Header = () => {
               <PhoneCall className="w-3 h-3 text-yellow-400 animate-pulse" />
               <span>Tổng đài Đặt khám: 1900 6868</span>
             </div>
-
-            {/* Chuyển đổi vai trò demo: Bác sĩ Lâm sàng <-> Bác sĩ Cận lâm sàng <-> Admin */}
-            <div className="flex items-center bg-blue-900/80 rounded-md p-0.5 border border-blue-700/60 text-xs">
-              <button
-                onClick={() => handleRoleChange("DOCTOR")}
-                className={`px-2.5 py-1 rounded flex items-center gap-1 transition-all ${
-                  user.role === "DOCTOR"
-                    ? "bg-white text-[#004282] font-semibold shadow-sm"
-                    : "text-blue-200 hover:text-white"
-                }`}
-                title="Giao diện Bác sĩ Lâm sàng"
-              >
-                <Stethoscope className="w-3 h-3" />
-                BS Lâm sàng
-              </button>
-              <button
-                onClick={() => handleRoleChange("LAB_TECH")}
-                className={`px-2.5 py-1 rounded flex items-center gap-1 transition-all ${
-                  (user.role === "PARACLINICAL" || user.role === "LAB_TECH")
-                    ? "bg-white text-[#004282] font-semibold shadow-sm"
-                    : "text-blue-200 hover:text-white"
-                }`}
-                title="Giao diện Bác sĩ Cận lâm sàng"
-              >
-                <FlaskConical className="w-3 h-3" />
-                BS Cận lâm sàng
-              </button>
-              <button
-                onClick={() => handleRoleChange("ADMIN")}
-                className={`px-2.5 py-1 rounded flex items-center gap-1 transition-all ${
-                  user.role === "ADMIN"
-                    ? "bg-white text-[#004282] font-semibold shadow-sm"
-                    : "text-blue-200 hover:text-white"
-                }`}
-                title="Giao diện Quản trị viên"
-              >
-                <Shield className="w-3 h-3" />
-                Admin
-              </button>
-            </div>
           </div>
         </div>
       </div>
@@ -117,7 +62,9 @@ const Header = () => {
               ? "/admin"
               : (user.role === "PARACLINICAL" || user.role === "LAB_TECH")
                 ? "/paraclinical"
-                : "/doctor"
+                : user.role === "RECEPTIONIST"
+                  ? "/receptionist"
+                  : "/doctor"
           }
           className="flex items-center gap-3 group"
         >
@@ -139,7 +86,9 @@ const Header = () => {
                 ? "Hệ thống Quản trị & Điều hành Bệnh viện (Admin Portal)"
                 : (user.role === "PARACLINICAL" || user.role === "LAB_TECH")
                   ? `Khu vực Cận lâm sàng • ${user.specialty}`
-                  : `Phòng khám Bác sĩ Lâm sàng • ${user.specialty}`}
+                  : user.role === "RECEPTIONIST"
+                    ? "Quầy Tiếp Đón & Điều Phối Bệnh Nhân (Receptionist Portal)"
+                    : `Phòng khám Bác sĩ Lâm sàng • ${user.specialty}`}
             </p>
           </div>
         </Link>

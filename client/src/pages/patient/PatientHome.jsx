@@ -120,66 +120,17 @@ export default function PatientHome() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 md:py-10 space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 text-[#005baa] text-xs font-bold uppercase tracking-wider">
-            <HeartPulse size={18} /> Cổng thông tin người bệnh
-          </div>
-          <h1 className="mt-2 text-2xl md:text-3xl font-extrabold text-slate-900">
-            Chăm sóc sức khỏe thuận tiện hơn
-          </h1>
-          <p className="mt-2 text-sm text-slate-600 max-w-3xl">
-            Xem các chức năng dành cho bệnh nhân. Dữ liệu y tế chỉ được hiển thị khi
-            backend cung cấp API và tài khoản có quyền truy cập phù hợp.
-          </p>
+      <div>
+        <div className="flex items-center gap-2 text-[#005baa] text-xs font-bold uppercase tracking-wider">
+          <HeartPulse size={18} /> Cổng thông tin người bệnh
         </div>
-        <button
-          type="button"
-          onClick={loadProfile}
-          disabled={profileStatus === 'loading'}
-          className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-50"
-        >
-          <RefreshCw size={16} className={profileStatus === 'loading' ? 'animate-spin' : ''} />
-          Kiểm tra tài khoản
-        </button>
-      </div>
-
-      <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm" role="status">
-        {profileStatus === 'loading' || profileStatus === 'idle' ? (
-          <p className="text-slate-600">Đang kiểm tra thông tin tài khoản...</p>
-        ) : profileStatus === 'success' ? (
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="flex items-start gap-2.5">
-              <CheckCircle2 size={20} className="mt-0.5 shrink-0 text-emerald-600" />
-              <div>
-                <p className="font-semibold text-slate-900">Thông tin tài khoản đã được xác thực</p>
-                <p className="mt-1 text-slate-600">
-                  Tên đăng nhập: <strong>{profile.username}</strong>
-                  {profile.email && <> · Email: {profile.email}</>}
-                  {profile.phone && <> · SĐT: {profile.phone}</>}
-                </p>
-              </div>
-            </div>
-            <Link to="/patient/profile" className="text-[#004282] font-semibold hover:underline whitespace-nowrap">
-              Xem hồ sơ tài khoản
-            </Link>
-          </div>
-        ) : (
-          <div className="flex items-start gap-2.5">
-            <AlertCircle size={20} className="mt-0.5 shrink-0 text-amber-600" />
-            <div className="text-slate-700">
-              {profileStatus === 'guest' && (
-                <>Bạn chưa đăng nhập. <Link to="/login?role=patient" className="font-bold text-[#004282] hover:underline">Đăng nhập</Link> để xem tài khoản.</>
-              )}
-              {profileStatus === 'wrong-role' && 'Bạn đang sử dụng tài khoản không có vai trò PATIENT.'}
-              {profileStatus === 'demo' &&
-                'Đang xem giao diện bằng tài khoản demo. Chưa có phiên đăng nhập backend hợp lệ; dữ liệu y tế không được tải.'}
-              {profileStatus === 'error' && (
-                <>Không thể xác thực thông tin tài khoản từ backend: {profileError}</>
-              )}
-            </div>
-          </div>
-        )}
+        <h1 className="mt-2 text-2xl md:text-3xl font-extrabold text-slate-900">
+          Chăm sóc sức khỏe thuận tiện hơn
+        </h1>
+        <p className="mt-2 text-sm text-slate-600 max-w-3xl">
+          Xem các chức năng dành cho bệnh nhân. Dữ liệu y tế chỉ được hiển thị khi
+          backend cung cấp API và tài khoản có quyền truy cập phù hợp.
+        </p>
       </div>
 
       <nav className="flex gap-2 overflow-x-auto pb-1" aria-label="Các mục thông tin bệnh nhân">

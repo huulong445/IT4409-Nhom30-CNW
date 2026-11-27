@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 
 const Login = () => {
-  const { login, loginAs, usersList } = useAuth();
+  const { login } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -35,7 +35,6 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const [staffCategory, setStaffCategory] = useState('ALL'); // 'ALL', 'CLINICAL', 'PARACLINICAL', 'ADMIN'
 
   // Switch mode handler
   const handleSwitchMode = (mode) => {
@@ -43,15 +42,12 @@ const Login = () => {
     setErrorMessage('');
     const redirectUrl = searchParams.get('redirect');
     const newParams = mode === 'PATIENT' ? { role: 'patient' } : { role: 'staff' };
-    if (redirectUrl) newParams.redirect = redirectUrl;
-    setSearchParams(newParams);
-    if (mode === 'PATIENT') {
-      setIdentifier('');
-      setPassword('');
-    } else {
-      setIdentifier('');
-      setPassword('');
+    if (redirectUrl && (mode === 'PATIENT' ? redirectUrl.startsWith('/patient') : !redirectUrl.startsWith('/patient'))) {
+      newParams.redirect = redirectUrl;
     }
+    setSearchParams(newParams);
+    setIdentifier('');
+    setPassword('');
   };
 
   const redirectAfterLogin = (userObj) => {
@@ -59,18 +55,29 @@ const Login = () => {
       navigate('/');
       return;
     }
+    const role = String(userObj.role || '').toUpperCase();
     const redirectUrl = searchParams.get('redirect');
-    if (redirectUrl) {
+    const canUseRedirect =
+      redirectUrl &&
+      ((role === 'PATIENT' && redirectUrl.startsWith('/patient')) ||
+        (role === 'ADMIN' && redirectUrl.startsWith('/admin')) ||
+        (role === 'DOCTOR' && redirectUrl.startsWith('/doctor')) ||
+        (role === 'RECEPTIONIST' && redirectUrl.startsWith('/receptionist')) ||
+        ((role === 'LAB_TECH' || role === 'PARACLINICAL') && redirectUrl.startsWith('/paraclinical')));
+
+    if (canUseRedirect) {
       navigate(redirectUrl);
       return;
     }
-    if (userObj.role === 'PATIENT') {
+    if (role === 'PATIENT') {
       navigate('/patient');
-    } else if (userObj.role === 'ADMIN') {
+    } else if (role === 'ADMIN') {
       navigate('/admin');
-    } else if ((userObj.role === 'PARACLINICAL' || userObj.role === 'LAB_TECH')) {
+    } else if (role === 'PARACLINICAL' || role === 'LAB_TECH') {
       navigate('/paraclinical');
-    } else if (userObj.role === 'DOCTOR') {
+    } else if (role === 'RECEPTIONIST') {
+      navigate('/receptionist');
+    } else if (role === 'DOCTOR') {
       navigate('/doctor');
     } else {
       navigate('/');
@@ -97,19 +104,6 @@ const Login = () => {
       setErrorMessage(res.message);
     }
   };
-
-  const handleQuickLogin = async (userItem) => {
-    const result = await loginAs(userItem);
-    if (result.success) redirectAfterLogin(result.user);
-    else setErrorMessage(result.message || "Không thể mở chế độ demo.");
-  };
-
-  // Danh sách minh họa chỉ được cung cấp trong Vite DEV, không dùng để xác thực thật.
-  // Staff lists
-  const clinicalDoctors = usersList.filter(u => u.doctorType === 'CLINICAL');
-  const paraclinicalDoctors = usersList.filter(u => u.doctorType === 'PARACLINICAL');
-  const admins = usersList.filter(u => u.doctorType === 'ADMIN');
-  const patients = usersList.filter(u => u.role === 'PATIENT');
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col justify-between text-slate-800">
@@ -266,7 +260,6 @@ const Login = () => {
                 <input type="checkbox" defaultChecked className="rounded border-slate-300 text-[#004282] focus:ring-0" />
                 <span>Ghi nhớ đăng nhập</span>
               </label>
-              <span className="text-[11px] text-slate-400">Mật khẩu mẫu: 123</span>
             </div>
 
             <button
@@ -294,182 +287,6 @@ const Login = () => {
             <div className="mt-6 pt-5 border-t border-slate-100 text-center text-xs text-slate-500">
               <ShieldCheck className="w-4 h-4 text-emerald-600 inline mr-1" />
               Khu vực dành riêng cho nhân viên Bệnh viện Bách Khoa
-            </div>
-          )}
-        </div>
-
-        {/* Khối Gợi Ý Đăng Nhập Nhanh Mẫu (Demo Quick Login) */}
-        <div className="flex-1 w-full bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-amber-500" />
-                <h3 className="font-bold text-sm text-slate-800">
-                  {loginMode === 'PATIENT'
-                    ? 'Tài Khoản Mẫu Cho Người Bệnh'
-                    : 'Tài Khoản Mẫu Cho Cán Bộ Y Tế (1 Click)'}
-                </h3>
-              </div>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Bấm vào một tài khoản bên dưới để tự động đăng nhập và trải nghiệm ngay
-              </p>
-            </div>
-          </div>
-
-          {loginMode === 'PATIENT' ? (
-            /* Danh sách tài khoản mẫu người bệnh */
-            <div className="space-y-3">
-              {patients.length > 0 ? (
-                patients.map(p => (
-                  <div
-                    key={p.id}
-                    onClick={() => handleQuickLogin(p)}
-                    className="p-4 rounded-xl border border-slate-200 hover:border-blue-500 hover:bg-blue-50/50 cursor-pointer transition flex items-center justify-between group"
-                  >
-                    <div className="flex items-center gap-3">
-                      <img src={p.avatar} alt={p.fullName} className="w-12 h-12 rounded-xl object-cover border border-slate-200 shrink-0" />
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h4 className="font-bold text-sm text-slate-800 group-hover:text-[#004282] transition">
-                            {p.fullName}
-                          </h4>
-                          <span className="text-[10px] bg-emerald-100 text-emerald-700 font-bold px-1.5 py-0.5 rounded">
-                            Bệnh nhân
-                          </span>
-                        </div>
-                        <div className="text-xs text-slate-500 mt-0.5">
-                          SĐT: <strong className="text-slate-700">{p.phone}</strong> • Mã BN: {p.patientId}
-                        </div>
-                        <div className="text-[11px] text-blue-600 font-medium mt-0.5">
-                          Số BHYT: {p.insuranceNumber}
-                        </div>
-                      </div>
-                    </div>
-                    <button className="px-3 py-1.5 rounded-lg bg-blue-50 group-hover:bg-[#004282] text-[#004282] group-hover:text-white text-xs font-semibold transition shrink-0">
-                      Đăng nhập &rarr;
-                    </button>
-                  </div>
-                ))
-              ) : (
-                <div
-                  onClick={() => handleQuickLogin({
-                    id: 501,
-                    username: "benhnhan",
-                    fullName: "Nguyễn Thị Mai Lan",
-                    role: "PATIENT",
-                    avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80"
-                  })}
-                  className="p-4 rounded-xl border border-slate-200 hover:border-blue-500 hover:bg-blue-50/50 cursor-pointer transition flex items-center justify-between group"
-                >
-                  <div className="flex items-center gap-3">
-                    <img src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80" alt="Mai Lan" className="w-12 h-12 rounded-xl object-cover shrink-0" />
-                    <div>
-                      <h4 className="font-bold text-sm text-slate-800 group-hover:text-[#004282]">
-                        Nguyễn Thị Mai Lan
-                      </h4>
-                      <p className="text-xs text-slate-500">Tài khoản minh họa — không phải hồ sơ bệnh nhân thật</p>
-                    </div>
-                  </div>
-                  <span className="px-3 py-1.5 rounded-lg bg-[#004282] text-white text-xs font-semibold">
-                    Đăng nhập &rarr;
-                  </span>
-                </div>
-              )}
-
-              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/80 text-xs text-slate-600 space-y-1">
-                <div className="font-bold text-slate-800">Quyền lợi tài khoản người bệnh:</div>
-                <div>• Tra cứu kết quả xét nghiệm huyết học, sinh hóa số hóa</div>
-                <div>• Xem kết quả chụp X-quang, MRI trực tuyến</div>
-                <div>• Theo dõi lịch hẹn khám và đơn thuốc điện tử</div>
-              </div>
-            </div>
-          ) : (
-            /* Danh sách tài khoản mẫu cán bộ y tế */
-            <div>
-              {import.meta.env.DEV && <p role="status" className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-900">Tài khoản demo chỉ để xem trước giao diện. Không tạo JWT, không xác thực với backend và không đại diện cho bác sĩ/bệnh nhân thật.</p>}
-              {/* Category selector */}
-              <div className="flex gap-1.5 mb-4 border-b border-slate-200 pb-2">
-                {[
-                  { id: 'ALL', label: 'Tất cả vai trò' },
-                  { id: 'CLINICAL', label: 'BS Lâm sàng' },
-                  { id: 'PARACLINICAL', label: 'BS Cận lâm sàng' },
-                  { id: 'ADMIN', label: 'Quản trị viên' }
-                ].map(tab => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setStaffCategory(tab.id)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-                      staffCategory === tab.id
-                        ? 'bg-[#004282] text-white shadow-sm'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
-
-              <div className="space-y-2.5 max-h-[380px] overflow-y-auto pr-1">
-                {(staffCategory === 'ALL' || staffCategory === 'CLINICAL') && clinicalDoctors.map(doc => (
-                  <div
-                    key={doc.id}
-                    onClick={() => handleQuickLogin(doc)}
-                    className="p-3 rounded-xl border border-slate-200 hover:border-blue-500 hover:bg-blue-50/50 cursor-pointer transition flex items-center justify-between group"
-                  >
-                    <div className="flex items-center gap-3">
-                      <img src={doc.avatar} alt={doc.fullName} className="w-10 h-10 rounded-xl object-cover shrink-0" />
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h4 className="font-bold text-xs text-slate-800 group-hover:text-[#004282]">{doc.fullName}</h4>
-                          <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.2 rounded font-semibold">Lâm sàng</span>
-                        </div>
-                        <div className="text-[11px] text-slate-500">{doc.specialty} • User: <code className="text-slate-700 font-bold">{doc.username}</code></div>
-                      </div>
-                    </div>
-                    <span className="text-xs text-[#004282] font-bold group-hover:translate-x-1 transition-transform">Chọn &rarr;</span>
-                  </div>
-                ))}
-
-                {(staffCategory === 'ALL' || staffCategory === 'PARACLINICAL') && paraclinicalDoctors.map(doc => (
-                  <div
-                    key={doc.id}
-                    onClick={() => handleQuickLogin(doc)}
-                    className="p-3 rounded-xl border border-slate-200 hover:border-purple-500 hover:bg-purple-50/50 cursor-pointer transition flex items-center justify-between group"
-                  >
-                    <div className="flex items-center gap-3">
-                      <img src={doc.avatar} alt={doc.fullName} className="w-10 h-10 rounded-xl object-cover shrink-0" />
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h4 className="font-bold text-xs text-slate-800 group-hover:text-purple-700">{doc.fullName}</h4>
-                          <span className="text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.2 rounded font-semibold">Cận lâm sàng</span>
-                        </div>
-                        <div className="text-[11px] text-slate-500">{doc.specialty} • User: <code className="text-slate-700 font-bold">{doc.username}</code></div>
-                      </div>
-                    </div>
-                    <span className="text-xs text-purple-700 font-bold group-hover:translate-x-1 transition-transform">Chọn &rarr;</span>
-                  </div>
-                ))}
-
-                {(staffCategory === 'ALL' || staffCategory === 'ADMIN') && admins.map(adm => (
-                  <div
-                    key={adm.id}
-                    onClick={() => handleQuickLogin(adm)}
-                    className="p-3 rounded-xl border border-slate-200 hover:border-amber-500 hover:bg-amber-50/50 cursor-pointer transition flex items-center justify-between group"
-                  >
-                    <div className="flex items-center gap-3">
-                      <img src={adm.avatar} alt={adm.fullName} className="w-10 h-10 rounded-xl object-cover shrink-0" />
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h4 className="font-bold text-xs text-slate-800 group-hover:text-amber-700">{adm.fullName}</h4>
-                          <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.2 rounded font-semibold">Quản trị</span>
-                        </div>
-                        <div className="text-[11px] text-slate-500">{adm.departmentName} • User: <code className="text-slate-700 font-bold">{adm.username}</code></div>
-                      </div>
-                    </div>
-                    <span className="text-xs text-amber-700 font-bold group-hover:translate-x-1 transition-transform">Chọn &rarr;</span>
-                  </div>
-                ))}
-              </div>
             </div>
           )}
         </div>
