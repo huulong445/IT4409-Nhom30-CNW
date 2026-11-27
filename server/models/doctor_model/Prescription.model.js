@@ -54,7 +54,7 @@ const PrescriptionModel = {
     }
 },
 
-getByFilters: async ({ record_id, patient_id }) => {
+getByFilters: async ({ record_id, patient_id, full_name }) => {
     let query = `
         SELECT 
             p.*,
@@ -64,7 +64,7 @@ getByFilters: async ({ record_id, patient_id }) => {
                     JSON_OBJECT(
                         'detail_id', pd.detail_id,
                         'med_id', pd.med_id,
-                        'med_name', m.name, -- Giả sử bảng medicine có cột name (nếu muốn lấy tên thuốc)
+                        'med_name', m.name,
                         'quantity', pd.quantity,
                         'unit_price', pd.unit_price,
                         'dosage', pd.dosage,
@@ -75,10 +75,12 @@ getByFilters: async ({ record_id, patient_id }) => {
             ) AS details
         FROM prescriptions p
         LEFT JOIN medical_records mr ON p.record_id = mr.record_id
+        LEFT JOIN patients pt ON mr.patient_id = pt.patient_id
         LEFT JOIN prescription_details pd ON p.prescription_id = pd.prescription_id
         LEFT JOIN medicine m ON pd.med_id = m.med_id
         WHERE 1=1
     `;
+
     const params = [];
 
     if (record_id) {
@@ -91,14 +93,20 @@ getByFilters: async ({ record_id, patient_id }) => {
         params.push(patient_id);
     }
 
+    if (full_name) {
+        query += ` AND pt.full_name LIKE ?`;
+        params.push(`%${full_name}%`);
+    }
+
     query += ` GROUP BY p.prescription_id`;
 
     const [rows] = await db.query(query, params);
-    
-    // Ép kiểu JSON nếu mysql/mysql2 driver trả về chuỗi JSON string
+
     return rows.map(row => ({
         ...row,
-        details: typeof row.details === 'string' ? JSON.parse(row.details) : row.details
+        details: typeof row.details === 'string'
+            ? JSON.parse(row.details)
+            : row.details
     }));
 },
 

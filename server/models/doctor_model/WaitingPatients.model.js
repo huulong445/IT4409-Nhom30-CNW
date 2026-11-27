@@ -26,6 +26,25 @@ const getWaitingPatientsByDoctorAndDate = async (doctor_id, date) => {
     return rows;
 };
 
+//p nhật trạng thái lịch hẹn
+const updateAppointmentStatus = async (appointment_id, doctor_id, status) => {
+    const query = `
+        UPDATE appointments
+        SET status = ?
+        WHERE appointment_id = ?
+          AND doctor_id = ?
+    `;
+
+    const [result] = await db.query(query, [
+        status,
+        appointment_id,
+        doctor_id
+    ]);
+
+    return result;
+};
+
 module.exports = {
-    getWaitingPatientsByDoctorAndDate
+    getWaitingPatientsByDoctorAndDate,
+    updateAppointmentStatus
 };

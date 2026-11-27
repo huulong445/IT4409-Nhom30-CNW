@@ -19,13 +19,13 @@ exports.CreateLabRequest = async (req, res) => {
 // GET /api/lab-requests?record_id=... hoặc ?patient_id=...
 exports.GetLabRequests = async (req, res) => {
     try {
-        const { record_id, patient_id } = req.query;
+        const { record_id, patient_id, doctor_id, status, full_name } = req.query;
         
-        if (!record_id && !patient_id) {
-            return res.status(400).json({ success: false, message: "Cần cung cấp record_id hoặc patient_id để tra cứu" });
+        if (!record_id && !patient_id && !doctor_id && !status && !full_name) {
+            return res.status(400).json({ success: false, message: "Cần cung cấp record_id / patient_id/ doctor_id/ status / full_name để tra cứu" });
         }
 
-        const rows = await LabRequestModel.getByFilters({ record_id, patient_id });
+        const rows = await LabRequestModel.getByFilters({ record_id, patient_id, doctor_id, status,full_name });
         return res.status(200).json({ success: true, data: rows });
     } catch (error) {
         return res.status(500).json({ success: false, message: error.message });

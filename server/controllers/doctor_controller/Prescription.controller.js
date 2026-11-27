@@ -40,17 +40,17 @@ exports.CreatePrescription = async (req, res) => {
 // GET /api/prescriptions
 exports.GetPrescriptionByRecord = async (req, res) => {
     try {
-        const { record_id, patient_id } = req.query;
+        const { record_id, patient_id, full_name } = req.query;
 
         // Kiểm tra xem người dùng có truyền ít nhất 1 trong 2 tham số không
-        if (!record_id && !patient_id) {
+        if (!record_id && !patient_id && !full_name) {
             return res.status(400).json({ 
                 success: false, 
-                message: "Cần cung cấp record_id hoặc patient_id để tra cứu" 
+                message: "Cần cung cấp record_id hoặc patient_id hoặc full_name để tra cứu" 
             });
         }
 
-        const prescriptions = await PrescriptionModel.getByFilters({ record_id, patient_id });
+        const prescriptions = await PrescriptionModel.getByFilters({ record_id, patient_id, full_name});
 
         if (!prescriptions || prescriptions.length === 0) {
             return res.status(404).json({ success: false, message: "Không tìm thấy đơn thuốc" });
